@@ -1,0 +1,865 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>GMSW — Generador de Mensajes Institucionales</title>
+  <script src="https://cdn.jsdelivr.net/npm/react@18.3.1/umd/react.production.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/react-dom@18.3.1/umd/react-dom.production.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@babel/standalone@7.26.5/babel.min.js"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800;900&family=Source+Sans+3:ital,wght@0,300;0,400;0,500;0,600;1,400&display=swap" rel="stylesheet" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --guindo:     #B11116;
+      --guindo-dim: rgba(177,17,22,0.07);
+      --naranja:    #F15A22;
+      --bg:         #F4F1EE;
+      --surface:    #FFFFFF;
+      --border:     #E6DED8;
+      --text:       #1A1210;
+      --sec:        #6B5752;
+      --muted:      #ADA09A;
+      --err:        #C0392B;
+      --ok:         #27AE60;
+    }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'Source Sans 3', sans-serif;
+      min-height: 100vh;
+      line-height: 1.65;
+    }
+
+    /* Marca de agua — logo SW a baja opacidad */
+    body::before {
+      content: '';
+      position: fixed;
+      bottom: -120px;
+      right: -120px;
+      width: 580px;
+      height: 580px;
+      background-image: var(--logo-url);
+      background-repeat: no-repeat;
+      background-position: center;
+      background-size: contain;
+      opacity: 0.032;
+      pointer-events: none;
+      z-index: 0;
+      user-select: none;
+    }
+
+    .wrap { max-width: 820px; margin: 0 auto; padding: 0 24px 80px; position: relative; z-index: 1; }
+
+    /* Header */
+    .hdr {
+      text-align: center; padding: 64px 0 48px; border-bottom: 1px solid var(--border);
+      margin-bottom: 48px; position: relative; overflow: hidden;
+    }
+    /* Dot grid background in header */
+    .hdr::before {
+      content: ''; position: absolute; inset: 0;
+      background-image: radial-gradient(circle, rgba(177,17,22,0.18) 1px, transparent 1px);
+      background-size: 18px 18px; pointer-events: none;
+    }
+    .hdr-logo { height: 64px; margin-bottom: 20px; display: block; margin-left: auto; margin-right: auto; position: relative; z-index: 1; }
+    .hdr h1 { font-family: 'Montserrat', sans-serif; font-size: 20px; font-weight: 900; color: var(--text); margin-bottom: 8px; letter-spacing: -0.5px; position: relative; z-index: 1; }
+    .hdr p { font-size: 10px; color: var(--muted); letter-spacing: 3px; text-transform: uppercase; font-family: 'Montserrat', sans-serif; position: relative; z-index: 1; }
+
+    /* Brand vertical bars accent */
+    .hdr-bars { position: absolute; top: 22px; right: 24px; display: flex; gap: 3px; align-items: flex-start; z-index: 1; }
+    .hdr-bar { width: 6px; border-radius: 3px; }
+    .hdr-bar:nth-child(1) { height: 38px; background: var(--naranja); }
+    .hdr-bar:nth-child(2) { height: 28px; background: var(--naranja); margin-top: 5px; }
+    .hdr-bar:nth-child(3) { height: 38px; background: #1A1210; }
+    .hdr-bar:nth-child(4) { height: 22px; background: #1A1210; margin-top: 8px; }
+
+    /* Brand pill accent */
+    .brand-pill {
+      display: block; width: 52px; height: 13px; border-radius: 999px;
+      background: var(--guindo); margin: 0 auto 18px; position: relative; z-index: 1;
+    }
+
+    /* Steps */
+    .steps { display: flex; align-items: center; justify-content: center; margin-bottom: 40px; }
+    .s-item { display: flex; align-items: center; }
+    .s-dot {
+      width: 34px; height: 34px; border-radius: 50%; border: 1.5px solid var(--border);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 13px; font-weight: 700; color: var(--muted); background: var(--surface);
+      transition: all .25s; font-family: 'Montserrat', sans-serif;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+    }
+    .s-dot.active { border-color: var(--guindo); color: var(--guindo); box-shadow: 0 0 0 3px var(--guindo-dim), 0 1px 3px rgba(0,0,0,0.06); }
+    .s-dot.done { border-color: var(--guindo); background: var(--guindo); color: var(--surface); box-shadow: 0 2px 8px rgba(177,17,22,0.25); }
+    .s-line { width: 64px; height: 1.5px; background: var(--border); transition: background .3s; }
+    .s-line.done { background: var(--guindo); }
+
+    /* Card */
+    .card {
+      background: var(--surface); border: 1px solid var(--border); border-top: 2px solid var(--guindo);
+      border-radius: 16px; padding: 36px 40px; margin-bottom: 24px;
+      box-shadow: 0 2px 14px rgba(0,0,0,0.05);
+    }
+    .card h2 { font-family: 'Montserrat', sans-serif; font-size: 17px; font-weight: 700; margin-bottom: 6px; letter-spacing: -0.2px; color: var(--text); }
+    .card .sub { font-size: 14px; color: var(--sec); margin-bottom: 28px; font-weight: 300; }
+
+    /* Situations */
+    .sit-grid { display: grid; grid-template-columns: repeat(3,1fr); gap: 12px; }
+    @media(max-width:580px){ .sit-grid { grid-template-columns: repeat(2,1fr); } }
+    .sit-card {
+      background: var(--bg); border: 1.5px solid var(--border); border-radius: 12px;
+      padding: 22px 14px; cursor: pointer; text-align: center;
+      transition: all .2s; user-select: none;
+    }
+    .sit-card:hover { border-color: var(--guindo); background: var(--guindo-dim); box-shadow: 0 2px 10px rgba(177,17,22,0.08); }
+    .sit-card.sel  { border-color: var(--guindo); background: var(--guindo-dim); }
+    .sit-icon { font-size: 24px; display: block; margin-bottom: 9px; }
+    .sit-lbl { font-size: 11px; color: var(--sec); line-height: 1.35; font-weight: 600; font-family: 'Montserrat', sans-serif; }
+    .sit-card.sel .sit-lbl { color: var(--guindo); }
+
+    /* Tone slider */
+    .tone-ends { display: flex; justify-content: space-between; margin-bottom: 12px; font-size: 12px; color: var(--sec); font-family: 'Montserrat', sans-serif; font-weight: 600; }
+    input[type=range].slider {
+      width: 100%; -webkit-appearance: none; appearance: none;
+      height: 5px; border-radius: 3px; outline: none; cursor: pointer;
+    }
+    input[type=range].slider::-webkit-slider-thumb {
+      -webkit-appearance: none; width: 20px; height: 20px; border-radius: 50%;
+      background: var(--guindo); border: 3px solid var(--surface);
+      box-shadow: 0 0 0 1.5px var(--guindo), 0 2px 6px rgba(0,0,0,0.15); cursor: pointer;
+    }
+    input[type=range].slider::-moz-range-thumb {
+      width: 20px; height: 20px; border-radius: 50%;
+      background: var(--guindo); border: 3px solid var(--surface); box-shadow: 0 0 0 1.5px var(--guindo);
+    }
+    .tone-val { text-align: center; font-size: 13px; color: var(--guindo); font-weight: 700; margin-top: 12px; font-family: 'Montserrat', sans-serif; }
+
+    /* Pillars */
+    .pills { display: flex; flex-wrap: wrap; gap: 8px; }
+    .pill {
+      padding: 6px 14px; border-radius: 999px; border: 1.5px solid var(--border);
+      background: var(--surface); color: var(--sec); font-size: 11px; font-weight: 600;
+      cursor: pointer; transition: all .2s; user-select: none; font-family: 'Montserrat', sans-serif;
+    }
+    .pill:hover { border-color: var(--guindo); color: var(--guindo); background: var(--guindo-dim); }
+    .pill.sel { border-color: var(--guindo); background: var(--guindo-dim); color: var(--guindo); }
+
+    /* Textarea */
+    .brief {
+      width: 100%; background: var(--bg); border: 1.5px solid var(--border); border-radius: 10px;
+      color: var(--text); font-family: 'Source Sans 3', sans-serif; font-size: 15px; line-height: 1.7;
+      padding: 14px 16px; resize: vertical; min-height: 110px; outline: none; transition: all .2s;
+    }
+    .brief:focus { border-color: var(--guindo); box-shadow: 0 0 0 3px var(--guindo-dim); }
+    .brief::placeholder { color: var(--muted); }
+
+    /* Nav */
+    .nav { display: flex; justify-content: space-between; align-items: center; margin-top: 30px; gap: 12px; }
+    .btn {
+      padding: 11px 24px; border-radius: 8px; font-size: 11px; font-weight: 700;
+      cursor: pointer; transition: all .2s; border: none; font-family: 'Montserrat', sans-serif;
+      letter-spacing: 0.8px; text-transform: uppercase;
+    }
+    .btn-pri { background: var(--guindo); color: var(--surface); }
+    .btn-pri:hover:not(:disabled) { filter: brightness(1.1); transform: translateY(-1px); box-shadow: 0 4px 14px rgba(177,17,22,0.3); }
+    .btn-pri:disabled { opacity: .32; cursor: not-allowed; }
+    .btn-sec { background: transparent; color: var(--sec); border: 1.5px solid var(--border); }
+    .btn-sec:hover { border-color: var(--text); color: var(--text); }
+    .btn-gen { background: var(--guindo); font-size: 12px; padding: 13px 36px; }
+    .btn-gen:hover:not(:disabled) { box-shadow: 0 6px 20px rgba(177,17,22,0.35); transform: translateY(-2px); }
+
+    /* Loading */
+    .loading { text-align: center; padding: 56px 0; }
+    .vein { display: inline-flex; align-items: center; gap: 6px; margin-bottom: 14px; }
+    .node { width: 8px; height: 8px; border-radius: 50%; background: var(--guindo); animation: pulse 1.5s ease-in-out infinite; }
+    .node:nth-child(2){animation-delay:.18s} .node:nth-child(3){animation-delay:.36s}
+    .node:nth-child(4){animation-delay:.54s} .node:nth-child(5){animation-delay:.72s}
+    @keyframes pulse { 0%,100%{opacity:.15;transform:scale(.7)} 50%{opacity:1;transform:scale(1.2)} }
+    .loading p { font-size: 13px; color: var(--sec); font-style: italic; }
+
+    /* Error */
+    .err { background: rgba(192,57,43,.06); border: 1px solid rgba(192,57,43,.25); border-radius: 8px; padding: 11px 16px; font-size: 13px; color: var(--err); margin-top: 14px; }
+
+    /* Output */
+    .out-panel { background: var(--surface); border: 1px solid var(--border); border-top: 2px solid var(--guindo); border-radius: 16px; padding: 36px 40px; margin-top: 24px; box-shadow: 0 2px 14px rgba(0,0,0,0.05); }
+    .out-hdr { display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px; flex-wrap: wrap; gap: 10px; }
+    .out-title { font-family: 'Montserrat', sans-serif; font-size: 10px; font-weight: 700; color: var(--guindo); text-transform: uppercase; letter-spacing: 2.5px; }
+    .out-acts { display: flex; gap: 8px; }
+    .ibtn {
+      background: transparent; border: 1.5px solid var(--border); color: var(--sec);
+      padding: 7px 14px; border-radius: 6px; font-size: 11px; cursor: pointer;
+      font-family: 'Montserrat', sans-serif; font-weight: 700; letter-spacing: 0.4px;
+      transition: all .2s; display: flex; align-items: center; gap: 5px;
+    }
+    .ibtn:hover { border-color: var(--guindo); color: var(--guindo); }
+    .ibtn.ok { border-color: var(--ok); color: var(--ok); }
+    .ibtn:disabled { opacity: .45; cursor: not-allowed; }
+    .out-text { font-size: 15px; line-height: 1.95; color: var(--text); white-space: pre-wrap; word-break: break-word; font-family: 'Source Sans 3', sans-serif; }
+    .out-foot { margin-top: 22px; padding-top: 18px; border-top: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px; }
+    .out-meta { font-size: 11px; color: var(--muted); font-family: 'Montserrat', sans-serif; letter-spacing: 0.3px; }
+
+    /* Feedback / refinement */
+    .feed-sep { margin: 30px 0 24px; border: none; border-top: 1px dashed var(--border); }
+    .feed-label { font-family: 'Montserrat', sans-serif; font-size: 10px; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: 2px; margin-bottom: 10px; }
+    .feed-row { display: flex; gap: 10px; align-items: flex-end; }
+    .feed-input {
+      flex: 1; background: var(--bg); border: 1.5px solid var(--border); border-radius: 10px;
+      color: var(--text); font-family: 'Source Sans 3', sans-serif; font-size: 14px; line-height: 1.6;
+      padding: 10px 14px; resize: none; outline: none; transition: all .2s;
+    }
+    .feed-input:focus { border-color: var(--guindo); box-shadow: 0 0 0 3px var(--guindo-dim); }
+    .feed-input::placeholder { color: var(--muted); }
+    .out-text.dimmed { opacity: 0.35; transition: opacity .25s; }
+    .refining-note { font-size: 12px; color: var(--guindo); font-style: italic; margin-top: 10px; font-family: 'Source Sans 3', sans-serif; }
+
+    /* Lock screen */
+    #lock { position: fixed; inset: 0; background: var(--bg); z-index: 9999; display: flex; align-items: center; justify-content: center; }
+    #lock.hidden { display: none; }
+    .lock-card {
+      background: var(--surface); border: 1px solid var(--border); border-top: 3px solid var(--guindo);
+      border-radius: 16px; padding: 52px 44px; width: 100%; max-width: 380px;
+      box-shadow: 0 4px 24px rgba(0,0,0,0.08); text-align: center; position: relative; overflow: hidden;
+    }
+    /* Dot grid on lock card */
+    .lock-card::before {
+      content: ''; position: absolute; inset: 0;
+      background-image: radial-gradient(circle, rgba(177,17,22,0.12) 1px, transparent 1px);
+      background-size: 16px 16px; pointer-events: none;
+    }
+    .lock-card > * { position: relative; z-index: 1; }
+    .lock-bars { display: flex; gap: 3px; position: absolute; top: 16px; right: 16px; z-index: 2; }
+    .lock-bar { width: 5px; border-radius: 2px; }
+    .lock-bar:nth-child(1) { height: 28px; background: var(--naranja); }
+    .lock-bar:nth-child(2) { height: 20px; background: var(--naranja); margin-top: 4px; }
+    .lock-bar:nth-child(3) { height: 28px; background: #1A1210; }
+    .lock-bar:nth-child(4) { height: 16px; background: #1A1210; margin-top: 6px; }
+    .lock-logo-img { width: 210px; margin: 0 auto 36px; display: block; }
+    .lock-input {
+      width: 100%; background: var(--bg); border: 1.5px solid var(--border); border-radius: 10px;
+      color: var(--text); font-family: 'Source Sans 3', sans-serif; font-size: 15px;
+      padding: 13px 16px; outline: none; transition: all .2s; text-align: center;
+      letter-spacing: 3px; margin-bottom: 14px; display: block;
+    }
+    .lock-input:focus { border-color: var(--guindo); box-shadow: 0 0 0 3px var(--guindo-dim); }
+    .lock-input::placeholder { letter-spacing: 1px; color: var(--muted); }
+    .lock-input + .lock-input { margin-top: -6px; }
+    .user-chip { font-family: 'Montserrat', sans-serif; font-size: 10px; font-weight: 600; color: var(--muted); letter-spacing: 1.5px; text-transform: uppercase; margin-top: 6px; }
+    .lock-btn {
+      width: 100%; background: var(--guindo); color: var(--surface); border: none;
+      border-radius: 8px; font-family: 'Montserrat', sans-serif; font-size: 11px;
+      font-weight: 700; letter-spacing: 1px; text-transform: uppercase;
+      padding: 13px; cursor: pointer; transition: all .2s;
+    }
+    .lock-btn:hover { filter: brightness(1.1); transform: translateY(-1px); box-shadow: 0 4px 14px rgba(177,17,22,0.3); }
+    .lock-err { color: var(--err); font-size: 13px; margin-top: 14px; display: none; }
+
+    /* Footer rule */
+    .wrap::after {
+      content: ''; display: block; margin-top: 64px;
+      height: 1.5px; border-radius: 1px;
+      background: linear-gradient(to right, var(--guindo), transparent);
+      opacity: 0.35;
+    }
+  </style>
+</head>
+<body>
+
+<div id="lock">
+  <div class="lock-card">
+    <div class="lock-bars">
+      <div class="lock-bar"></div>
+      <div class="lock-bar"></div>
+      <div class="lock-bar"></div>
+      <div class="lock-bar"></div>
+    </div>
+    <img id="lock-logo-img" class="lock-logo-img" alt="Grupo Minero Sinchi Wayra" />
+    <input id="lock-user" class="lock-input" type="text" placeholder="Usuario" autocomplete="username" />
+    <input id="lock-pass" class="lock-input" type="password" placeholder="Contraseña" autocomplete="current-password" />
+    <button id="lock-btn" class="lock-btn">Ingresar →</button>
+    <p id="lock-err" class="lock-err">Usuario o contraseña incorrectos</p>
+  </div>
+</div>
+
+<div id="root" style="display:none"></div>
+
+<script>
+(function(){
+  var GMSW_LOGO = "data:image/png;base64,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";
+  window.GMSW_LOGO = GMSW_LOGO;
+  document.documentElement.style.setProperty('--logo-url', 'url("' + GMSW_LOGO + '")');
+  document.getElementById('lock-logo-img').src = GMSW_LOGO;
+  // ── USUARIOS ─────────────────────────────────────────────────
+  // Agregá o quitá usuarios aquí. Formato: { user: '...', pass: '...', label: '...' }
+  // label es el nombre que se muestra dentro de la app después de ingresar
+  var USERS = [
+    { user: 'comm',      pass: 'GMSW2026', label: 'Equipo Comunicaciones' },
+    { user: 'gerencia',  pass: 'GMSW2026', label: 'Gerencia'              },
+  ];
+  // ─────────────────────────────────────────────────────────────
+
+  var KEY_AUTH  = 'gmsw_auth';
+  var KEY_LABEL = 'gmsw_label';
+
+  function unlock(label){
+    sessionStorage.setItem(KEY_LABEL, label);
+    document.getElementById('lock').classList.add('hidden');
+    document.getElementById('root').style.display = '';
+  }
+
+  var savedLabel = sessionStorage.getItem(KEY_AUTH) === '1' && sessionStorage.getItem(KEY_LABEL);
+  if(savedLabel){ unlock(savedLabel); return; }
+
+  function tryLogin(){
+    var u = document.getElementById('lock-user').value.trim().toLowerCase();
+    var p = document.getElementById('lock-pass').value;
+    var match = USERS.find(function(x){ return x.user.toLowerCase() === u && x.pass === p; });
+    if(match){
+      sessionStorage.setItem(KEY_AUTH, '1');
+      unlock(match.label);
+    } else {
+      document.getElementById('lock-err').style.display = 'block';
+      document.getElementById('lock-pass').value = '';
+      document.getElementById('lock-pass').focus();
+    }
+  }
+
+  document.getElementById('lock-btn').addEventListener('click', tryLogin);
+  ['lock-user','lock-pass'].forEach(function(id){
+    document.getElementById(id).addEventListener('keydown', function(e){
+      if(e.key === 'Enter') tryLogin();
+    });
+  });
+})();
+</script>
+
+<script type="text/babel">
+
+// ── MESSAGE BOX — Caja de Mensajes Oficial GMSW 2026 ───────────
+const BOX = {
+  quienes: {
+    name: "Quiénes somos",
+    msgs: [
+      "Somos la empresa minera subterránea más grande de Bolivia, con más de 60 años de trayectoria.",
+      "Trabajamos con una visión de largo plazo, convencidos de que la minería debe dejar un legado positivo y sostenible.",
+      "Operamos bajo estándares internacionales de sostenibilidad, seguridad y gobernanza.",
+      "Nos posicionamos como un referente de minería responsable, integrando criterios ambientales, sociales y de derechos humanos en toda nuestra gestión.",
+      "La dirección del Grupo Minero Sinchi Wayra está conformada por ejecutivos bolivianos, con amplia trayectoria y experiencia del sector minero en Bolivia.",
+      "El 100% de nuestros trabajadores son bolivianos."
+    ]
+  },
+  donde: {
+    name: "Dónde operamos y qué producimos",
+    msgs: [
+      "Extraemos y comercializamos concentrados de zinc y plomo con contenido de plata, destinados a mercados internacionales.",
+      "Operamos en los departamentos de Potosí y Oruro, y contamos con oficinas centrales en la ciudad de La Paz.",
+      "Gestionamos tres operaciones mineras, cinco minas subterráneas, tres plantas concentradoras, una empresa comercializadora, una hidroeléctrica y una termoeléctrica.",
+      "En Oruro operamos una planta en Bolívar, ubicado en el municipio de Antequera. En Potosí, operamos una planta en Porco y la planta de concentración de Don Diego, correspondiente a Caballo Blanco.",
+      "Estamos conformados por cuatro empresas jurídicamente independientes: Sinchi Wayra S.A., Sociedad Minera Illapa S.A., Sociedad Minero Metalúrgica Reserva Ltda. y Empresa Minera San Lucas S.A.",
+      "Exportamos nuestros productos a Europa y Asia a través de puertos del Pacífico, bajo contratos formales y trazables."
+    ]
+  },
+  tecnicas: {
+    name: "Técnicas de explotación",
+    msgs: [
+      "Realizamos minería mecanizada mediante el uso de maquinaria pesada y tecnologías automatizadas, lo que nos permite operar de manera eficiente y segura para nuestros trabajadores y todos los involucrados.",
+      "Nuestro proceso de explotación minera y desarrollo comprende siete etapas: perforación, voladura, ventilación, carguío de mineral, transporte de mineral, sostenimiento, control e ingeniería.",
+      "Nuestro proceso de concentración comprende seis etapas: trituración, molienda, acondicionamiento y flotación, espesado y filtrado, almacenamiento de concentrados y transporte de concentrados a almacén.",
+      "Ejecutamos cada proceso bajo estrictos controles técnicos, ambientales y de seguridad industrial.",
+      "Almacenamos y manipulamos nuestros concentrados de manera responsable y cumpliendo la normativa nacional."
+    ]
+  },
+  santacruz: {
+    name: "Santacruz Silver Mining",
+    msgs: [
+      "Formamos parte de Santacruz Silver Mining Ltd., una empresa minera líder en Latinoamérica con sede en Vancouver.",
+      "La compañía cuenta con operaciones mineras en Bolivia, donde produce zinc y plomo con contenidos de plata, y en México, donde produce plata, zinc, cobre y plomo.",
+      "La confianza de Santacruz Silver Mining en el futuro de este proyecto se basa en el potencial mineralógico de Bolivia, los altos estándares internacionales bajo los que operamos y la experiencia de nuestro personal.",
+      "El Grupo Minero Sinchi Wayra es el core business de Santacruz Silver Mining, representando el 80% de todos sus activos. Las decisiones estratégicas de Santacruz también son lideradas por los ejecutivos de Sinchi Wayra.",
+      "Santacruz cotiza en el Nasdaq con el símbolo \"SCZM\" y en la TSXV con el símbolo \"SCZ\".",
+      "Operamos sin recibir asistencia económica del Estado boliviano, bajo principios de inversión responsable."
+    ]
+  },
+  inversion: {
+    name: "Inversión",
+    msgs: [
+      "El Grupo Minero Sinchi Wayra fue adquirido por la empresa canadiense Santacruz Silver Mining, con capitales de inversión de México y otros países, con una inversión inicial de 110 millones de dólares.",
+      "La confianza de Santacruz Silver Mining en el futuro de este proyecto se basa en el potencial mineralógico de Bolivia, los altos estándares internacionales bajo los que operamos y la experiencia de nuestro personal.",
+      "Santacruz Silver Mining es una empresa canadiense, con capitales mexicanos, que cotiza en la bolsa de Canadá, donde se encuentra registrada.",
+      "Nuestros activos en Bolivia incluyen cinco minas en producción, dos proyectos de exploración, tres plantas concentradoras, una comercializadora y dos plantas de energía.",
+      "Contamos con el proyecto de exploración y desarrollo Soracaya, que requiere una inversión de 40 millones de dólares."
+    ]
+  },
+  responsable: {
+    name: "Minería Responsable",
+    msgs: [
+      "Estamos convencidos de que la minería responsable genera prosperidad y crecimiento para Bolivia.",
+      "Guiados por políticas de respeto al medio ambiente y a los derechos humanos, contribuimos al desarrollo de las comunidades que nos rodean.",
+      "Nuestra minería prioriza la gestión responsable, el uso de tecnología avanzada, el cuidado ambiental y el compromiso con las comunidades.",
+      "Creemos que la minería responsable y moderna tiene un poder transformador para mejorar las condiciones de vida de las personas.",
+      "Ser parte de una estructura societaria fortalece la transparencia legal y financiera, mejora el control ambiental y social, define responsabilidades claras por operación y territorio, y refuerza la gobernanza corporativa.",
+      "Nuestra gestión está alineada con estándares internacionales como GRI, IFRS S1 y principios del ICMM."
+    ]
+  },
+  sostenible: {
+    name: "Desarrollo Sostenible",
+    msgs: [
+      "Integramos los Objetivos de Desarrollo Sostenible (ODS) en nuestra gestión diaria y en la estrategia del negocio.",
+      "Nuestro enfoque se rige por las 5P de la Agenda 2030 en cinco ámbitos clave para equilibrar bienestar social, cuidado ambiental, desarrollo económico, instituciones sólidas y cooperación.",
+      "Personas: Promovemos el bienestar de la población, asegurando que nadie se quede atrás mediante acciones vinculadas a salud, educación, igualdad y mejores condiciones de vida.",
+      "Planeta: Protegemos el medio ambiente y los recursos naturales, con énfasis en la gestión responsable del agua, el cuidado del clima, la biodiversidad y la reducción de la contaminación.",
+      "Prosperidad: Impulsamos el crecimiento económico y la generación de empleo de manera responsable, en armonía con la naturaleza y con una visión de largo plazo.",
+      "Paz: Fortalecemos instituciones, promovemos la ética, la justicia y la convivencia como condiciones esenciales para un desarrollo sostenible y duradero.",
+      "Alianzas (Partnerships): Fomentamos alianzas entre empresa, comunidades, Estado y otros actores para ampliar el alcance y el impacto de las acciones de desarrollo sostenible."
+    ]
+  },
+  proyectos: {
+    name: "Proyectos Sustentables",
+    msgs: [
+      "Creemos en el desarrollo de proyectos sustentables en nuestras áreas de influencia. De esta manera las familias de las comunidades tienen la posibilidad de generar ingresos en oficios no relacionados con la actividad minera.",
+      "Orkidea Andina, proyecto aliado: Implementa invernaderos tecnificados adaptados a la agricultura de altura. Fortalece la producción de alimentos y los ingresos familiares en zonas altoandinas.",
+      "Enseña por Bolivia: Fortalece capacidades docentes y liderazgo estudiantil. Promueve una educación con mayor impacto y permanencia en las comunidades.",
+      "Nuestro programa Emprender Futuro: Capacita a madres y jóvenes en habilidades blandas y empleabilidad. Impulsa el emprendimiento y la autonomía económica local.",
+      "Conexión / Manq'a: Forma a jóvenes en gastronomía, habilidades digitales y emprendimiento. Vincula la capacitación con oportunidades reales de ingresos y empleo.",
+      "GITEC: Realiza diagnósticos para optimizar el manejo hídrico y la siembra. Mejora la disponibilidad de agua y la productividad agrícola.",
+      "Junto a Pro Mujer: Desarrollamos diagnósticos de línea base con enfoque de género. Permite identificar necesidades prioritarias y orientar acciones para las mujeres de las comunidades."
+    ]
+  },
+  membresias: {
+    name: "Somos parte de",
+    msgs: [
+      "Formamos parte de la Asociación Nacional de Mineros Medianos (ANMM).",
+      "Somos signatarios del Pacto Global de Naciones Unidas – Red Bolivia, liderando la mesa de gobernanza.",
+      "Formamos parte de cámaras empresariales y de comercio nacionales e internacionales, como la AmCham, CNC, CNI, Britcham, AHK, FEPP, Círculo estratégico de CANEB y la Federación de Empresarios Privados de Bolivia."
+    ]
+  },
+  compliance: {
+    name: "Cumplimiento normativo y alianzas estratégicas",
+    msgs: [
+      "Canal de Denuncia: Es un sistema confidencial y anónimo que recibe cualquier inquietud o denuncia de un trabajador o personas externas del GMSW. Garantiza la protección del denunciante y la investigación objetiva de los hechos. Alineado con el ODS 16: Paz, justicia e instituciones sólidas.",
+      "Programa Anticorrupción: Es un programa de capacitación continua enfocado en el Código de Conducta de la empresa, reforzando los valores corporativos, así como la misión y visión del GMSW. Promueve la integridad y la transparencia en todas nuestras operaciones. Alineado con el ODS 16: Paz, justicia e instituciones sólidas.",
+      "Conflicto de Interés: Es un sistema que asegura la transparencia de la información respecto a las relaciones que nuestros colaboradores puedan tener con terceros, evitando riesgos que afecten la objetividad en la toma de decisiones. Alineado con el ODS 16 y el ODS 8: Trabajo decente y crecimiento económico.",
+      "Lavado de Activos: Es un programa de capacitación y prevención que fortalece las competencias de nuestros colaboradores para identificar, reportar y mitigar riesgos relacionados con el lavado de activos y financiamiento del terrorismo. Alineado con el ODS 16: Paz, justicia e instituciones sólidas.",
+      "Cadena de Suministro Responsable: Realizamos procesos de KYC (Know Your Customer) en la compra de mineral, garantizando las condiciones de trabajo, la trazabilidad y la legalidad del mineral adquirido. Este control fortalece la transparencia y la sostenibilidad de nuestra cadena de suministro."
+    ]
+  },
+  economico: {
+    name: "Impacto económico",
+    msgs: [
+      "Estamos entre las 14 empresas que más impuestos pagan en Bolivia y contribuimos al desarrollo del país mediante el pago de impuestos y regalías.",
+      "Más del 80% del presupuesto departamental de Potosí es generado por las regalías mineras.",
+      "Las exportaciones mineras representan más del 72% del total nacional, consolidándose como la principal fuente de exportaciones y generación de divisas del país.",
+      "Impulsamos economías locales y encadenamientos productivos con proveedores bolivianos.",
+      "El sector minero aporta más del 70% de las exportaciones nacionales y es el principal generador de divisas para Bolivia.",
+      "Impulsado por las exportaciones mineras, Potosí se consolidó como el principal departamento exportador de Bolivia en 2025, con USD 3.571 millones exportados, un 53% más que Santa Cruz.",
+      "La minería tiene un fuerte efecto multiplicador: cada USD 1 generado por el sector produce entre USD 3 y USD 4 de impacto económico, y cada empleo directo crea entre 4 y 6 empleos indirectos.",
+      "Solo la minería podría exportar más de USD 10.000 millones en 2026, superando el valor de todas las exportaciones realizadas por Bolivia en 2025.",
+      "El 70% de todo el valor generado por el sector minero privado retorna como divisas al país."
+    ]
+  },
+  social: {
+    name: "Impacto Social",
+    msgs: [
+      "Promovemos educación, salud, empleo de calidad, desarrollo, mejora de infraestructura y tecnología, en línea con el ODS 8: Trabajo digno y crecimiento económico.",
+      "Apostamos por relaciones de largo plazo basadas en confianza y valor compartido.",
+      "Respetamos y fomentamos la conservación de la cultura y tradiciones locales."
+    ]
+  },
+  ambiental: {
+    name: "Gestión Medioambiental",
+    msgs: [
+      "Demostramos, con hechos, tecnología y planificación, nuestra proyección hacia un modelo de minería sostenible, moderna, segura y en armonía con el medio ambiente.",
+      "Hemos invertido más de 12,8 millones de dólares en gestión ambiental en 2025.",
+      "Nuestro cumplimiento de la normativa ambiental boliviana vigente nos ha representado cero sanciones y multas monetarias por incumplimiento ambiental en 2025.",
+      "En 2025, no se registraron incidentes ambientales con impacto significativo ni eventos que hayan derivado en incumplimientos normativos, sanciones o afectación a terceros.",
+      "Rehabilitamos progresivamente las áreas intervenidas mediante revegetación, reforestación y recuperación de terrenos, integrando la gestión de la biodiversidad y la restauración ambiental como parte de la operación minera.",
+      "Planificamos el cierre ambiental desde el inicio de cada operación, con recursos financieros provisionados y planes de cierre actualizados que garantizan la estabilidad física, química y ambiental de los sitios a largo plazo.",
+      "Desde 2018 logramos una reducción del 33% en la intensidad de nuestros Gases de Efecto Invernadero, logrando una producción más limpia y eficiente."
+    ]
+  },
+  agua: {
+    name: "Gestión del agua",
+    msgs: [
+      "Somos una empresa ambientalmente responsable y ponemos especial énfasis en la gestión responsable del agua, al considerarla un bien preciado.",
+      "En nuestras operaciones de Bolívar utilizamos aguas subterráneas que, de otro modo, no llegarían a la superficie ni serían aprovechadas en beneficio de la población.",
+      "Nuestra gestión hídrica incluye el suministro de agua potable para trabajadores y el apoyo a comunidades cercanas, contribuyendo al bienestar y la calidad de vida local.",
+      "Gestionamos el agua de manera responsable y transparente, promoviendo el diálogo con las comunidades y contribuyendo al acceso a agua tratada para actividades productivas y consumo local.",
+      "En 2025, destinamos más de 4,2 millones de USD al tratamiento de agua, garantizando el cumplimiento de los estándares ambientales y la protección del recurso hídrico.",
+      "Solo el 0,9% del agua extraída proviene de pozos y fuentes superficiales naturales, priorizando el uso de agua producida y reutilizada para reducir el impacto sobre las fuentes naturales en las zonas de operación.",
+      "Más del 82% del agua extraída es devuelta al entorno de acuerdo con la normativa vigente, contribuyendo a la disponibilidad de agua para riego, consumo animal y otros usos productivos y comunitarios.",
+      "La recirculación es un pilar de nuestra gestión hídrica: el 59% del agua utilizada en los procesos fue reutilizada."
+    ]
+  },
+  diques: {
+    name: "Diques de colas",
+    msgs: [
+      "Priorizamos la construcción y el manejo adecuado de los diques de colas con tecnología de punta y con altos estándares de seguridad para las personas y el entorno, cumpliendo con la Norma Canadiense de uso de estas infraestructuras.",
+      "Nuestro equipo realiza un seguimiento permanente de los diques de colas activos y cerrados, garantizando su almacenamiento seguro y su estabilidad.",
+      "Al cierre de un dique, asumimos plenamente nuestra responsabilidad mediante el Plan de Cierre Ambiental, restituyendo los espacios e integrándolos nuevamente con vegetación nativa.",
+      "Gestionamos nuestros diques de colas bajo estándares internacionales y un enfoque preventivo basado en el ciclo completo de vida, priorizando la seguridad de las personas, el medio ambiente y la continuidad operativa."
+    ]
+  },
+  comunidades: {
+    name: "Relación con las comunidades",
+    msgs: [
+      "Valoramos una relación positiva y cercana con las comunidades locales, generando empleo y apoyando proyectos de educación, salud e infraestructura para mejorar la calidad de vida.",
+      "Brindamos oportunidades de crecimiento a las familias mediante educación, becas para estudios superiores y capacitación a mujeres y amas de casa.",
+      "Asumimos la responsabilidad de nuestras acciones, escuchamos a nuestros grupos de interés y trabajamos continuamente para mejorar nuestro desempeño comercial, social y ambiental.",
+      "Las comunidades son nuestras aliadas: cuando a ellas les va bien, a nosotros también.",
+      "Nos relacionamos con 30 comunidades que cuentan con aproximadamente 28.850 personas.",
+      "Construimos relaciones basadas en el respeto a la cultura, identidad y decisiones comunitarias.",
+      "Impulsamos el Desarrollo Productivo de las comunidades vecinas, beneficiando a 2.331 personas mediante la ejecución de proyectos productivos, la formación de mano de obra, la creación de microempresas, el apoyo a la producción de camélidos y la mejora de infraestructura local.",
+      "Beneficiamos a 15.750 personas, promoviendo las Tradiciones, la Cultura, el Deporte y las Actividades Sociales de nuestras comunidades vecinas mediante el apoyo a expresiones culturales, el fortalecimiento de usos y costumbres locales y el patrocinio de eventos sociales y deportivos.",
+      "4.085 personas fueron beneficiadas, promoviendo una Educación de Calidad mediante el pago de profesores, becas estudiantiles, desayuno y transporte escolar, así como mejoras en infraestructura educativa que contribuyen al acceso y permanencia de niños y jóvenes en el sistema educativo.",
+      "A través de nuestro programa de Apoyo a las Comunidades, beneficiamos a 2.362 personas mediante iniciativas orientadas a mejorar la infraestructura local, impulsar proyectos hídricos, fortalecer el saneamiento básico y atender necesidades prioritarias de las comunidades vecinas."
+    ]
+  },
+  ddhh: {
+    name: "Gestión de DDHH",
+    msgs: [
+      "Promovemos y ejercemos el respeto a los Derechos Humanos, en cumplimiento de las leyes nacionales y los convenios internacionales reconocidos por el Estado boliviano.",
+      "Aplicamos procesos de debida diligencia y mecanismos de denuncia y remediación.",
+      "Promovemos activamente que nuestros trabajadores, contratistas, proveedores y socios cumplan con nuestra política empresarial.",
+      "Nuestra Política de Derechos Humanos establece lineamientos claros para prevenir, identificar y gestionar impactos potenciales en los derechos fundamentales.",
+      "Trabajamos en el análisis de los posibles riesgos de vulneración de los Derechos Humanos, para poder abordarlos con la debida diligencia al respecto.",
+      "Si causamos o contribuimos a un impacto adverso en los Derechos Humanos, investigamos, informamos y participamos en procesos de reparación efectiva, garantizando el cierre adecuado del caso.",
+      "En 2025, incorporamos a dos especialistas en debida diligencia para inspeccionar y asegurar la ausencia de vulneraciones a los Derechos Humanos en la cadena de suministro de minerales."
+    ]
+  },
+  rrhh: {
+    name: "Gestión de Recursos Humanos",
+    msgs: [
+      "Cumplimos con la Ley General del Trabajo, cuidamos a nuestra gente y trabajamos para brindarles seguridad, salud y salarios competitivos.",
+      "En 2025 se impartieron 22.557 horas de capacitación, además de 8.188 horas de formación de empleados directos.",
+      "Brindamos seguridad en el trabajo en mina a través de nuestro programa integral \"Acciones que Salvan Vidas\".",
+      "Invertimos permanentemente en seguridad, dotando de equipos de protección personal y capacitando a nuestro personal en seguridad industrial y salud ocupacional.",
+      "Respetamos el derecho a la afiliación sindical.",
+      "Contamos con 5 sindicatos conformados por 889 trabajadores sindicalizados, respetando así el derecho de la libre asociación.",
+      "Empleamos a 810 contratistas, dinamizando la actividad económica en el país.",
+      "4.809 personas cuentan con acceso a la salud, a través de nuestro Seguro Delegado.",
+      "Generamos 104 nuevas contrataciones en 2025, llegando a ser 1.463 trabajadores a nivel nacional."
+    ]
+  },
+  crisis: {
+    name: "Minería como salida a la crisis",
+    msgs: [
+      "La minería representa más del 72% de las exportaciones totales del país, siendo con diferencia la principal fuente de generación de divisas para Bolivia.",
+      "Se estima que Bolivia cuenta con más de 100 años de reservas mineralógicas exploradas, lo que refleja su enorme y estratégico potencial minero.",
+      "Creemos que la minería formal es una fuente clave de empleo, inversión y generación de divisas.",
+      "La minería en Bolivia es uno de los sectores con demanda internacional sostenida y en crecimiento.",
+      "La minería es fundamental para abastecer de recursos esenciales que sostienen la vida moderna y el desarrollo de otras industrias.",
+      "Bolivia cuenta con minerales críticos y tierras raras que son altamente demandados en el contexto global y estratégicos para la transición energética.",
+      "El sector minero en Bolivia tiene el potencial de multiplicar sus exportaciones por 3 en el corto plazo; este escenario es posible si se logra brindar seguridad jurídica.",
+      "La minería privada y formal tiene la capacidad de captar 1.000 millones en Inversión Extranjera Directa, de empresas que ya están operando en el país.",
+      "La transición energética solo es posible con mayor actividad minera; la tendencia señala que la demanda de minerales continuará en ascenso durante los próximos años."
+    ]
+  }
+};
+
+const SITUATIONS = [
+  { key: 'carta', icon: '✉️', label: 'Carta externa o interna',
+    fmt: 'Redacta una carta formal. Incluye asunto, saludo, cuerpo en 2-3 párrafos bien desarrollados y cierre cordial con firma institucional.' },
+  { key: 'correo', icon: '📧', label: 'Correo electrónico',
+    fmt: 'Redacta un correo institucional. Incluye asunto sugerido entre [corchetes], saludo breve, cuerpo en 2 párrafos y cierre.' },
+  { key: 'informe', icon: '📋', label: 'Informe o reporte',
+    fmt: 'Redacta un fragmento narrativo para informe o reporte. Estilo objetivo y estructurado, con subtítulos si aplica.' },
+  { key: 'discurso', icon: '📣', label: 'Discurso o TED talk',
+    fmt: 'Redacta un discurso con apertura impactante, desarrollo sólido con ideas clave bien articuladas y cierre memorable con llamado a acción.' },
+  { key: 'comunicacion', icon: '📢', label: 'Nota de prensa, comunicado o RRSS',
+    fmt: 'Si es nota de prensa: titular, lead (5W), 2-3 párrafos y boilerplate institucional al cierre. Si es comunicado: formato directo y claro. Si son RRSS: 2 publicaciones para LinkedIn, concisas e impactantes, con hashtags.' },
+];
+
+// ── LOGIC ──────────────────────────────────────────────────────
+function buildPrompt(sit, tone, brief) {
+  const hardPct = 100 - tone;
+  const softPct = tone;
+  const sitObj = SITUATIONS.find(s => s.key === sit);
+
+  let msgSection = '';
+  Object.values(BOX).forEach(b => {
+    msgSection += `\n### ${b.name}\n`;
+    b.msgs.forEach(m => { msgSection += `- ${m}\n`; });
+  });
+
+  const toneNote = hardPct > softPct
+    ? 'Tono corporativo/factual: lleva datos y cifras al frente; los valores son respaldo.'
+    : hardPct === softPct
+      ? 'Tono equilibrado: alterna datos con referencias humanas y comunitarias de forma natural.'
+      : 'Tono humano/valorativo: lleva personas y propósito al frente; los datos son soporte.';
+
+  return `Eres el director de comunicaciones del Grupo Minero Sinchi Wayra.
+Tu tarea es redactar textos institucionales usando ÚNICA Y EXCLUSIVAMENTE los mensajes de la caja de mensajes oficial que se te proporcionan a continuación.
+
+REGLA ABSOLUTA — LEE ESTO ANTES DE ESCRIBIR UNA SOLA PALABRA:
+No uses ninguna información que no esté textualmente en la lista de mensajes disponibles.
+- NO inventes datos, cifras ni estadísticas aunque las conozcas
+- NO agregues información de internet ni de tu conocimiento general sobre minería, Bolivia o Sinchi Wayra
+- NO menciones proyectos, eventos, premios o iniciativas que no aparezcan en los mensajes
+- NO completes ni extrapoles información que no esté en la lista
+- Si el brief pide algo que no está en los mensajes, redacta únicamente con lo que sí tienes
+- Cada dato o afirmación que escribas debe poder rastrearse a uno de los mensajes de abajo
+
+CONTEXTO:
+- Tipo de comunicación: ${sitObj?.label}
+- Balance de tono: ${hardPct}% datos y hechos / ${softPct}% valores y personas
+
+CAJA DE MENSAJES COMPLETA — ÚNICA FUENTE PERMITIDA:
+${msgSection}
+
+INSTRUCCIONES DE REDACCIÓN:
+- Selecciona libremente los mensajes que sean más pertinentes para el brief; no es necesario usarlos todos
+- Combina y reformula los seleccionados de forma natural y fluida; no los listes como bullets
+- El resultado debe sonar humano y coherente, no como una concatenación mecánica
+- ${sitObj?.fmt}
+- ${toneNote}
+- Idioma: español
+
+BRIEF:
+${brief}`;
+}
+
+// ── COMPONENTS ─────────────────────────────────────────────────
+function Steps({ cur }) {
+  return (
+    <div className="steps">
+      {[1,2,3].map((n,i) => (
+        <div key={n} className="s-item">
+          {i > 0 && <div className={`s-line${cur > n-1 ? ' done' : ''}`} />}
+          <div className={`s-dot${cur === n ? ' active' : cur > n ? ' done' : ''}`}>
+            {cur > n ? '✓' : n}
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function Loading() {
+  return (
+    <div className="loading">
+      <div className="vein">{[0,1,2,3,4].map(i => <div key={i} className="node" />)}</div>
+      <p>Generando comunicación institucional…</p>
+    </div>
+  );
+}
+
+// ── APP ────────────────────────────────────────────────────────
+function App() {
+  const [step, setStep]         = React.useState(1);
+  const [sit, setSit]           = React.useState(null);
+  const [tone, setTone]         = React.useState(50);
+  const [brief, setBrief]       = React.useState('');
+  const [output, setOutput]     = React.useState('');
+  const [history, setHistory]   = React.useState([]);
+  const [feedback, setFeedback] = React.useState('');
+  const [loading, setLoading]   = React.useState(false);
+  const [refining, setRefining] = React.useState(false);
+  const [error, setError]       = React.useState('');
+  const [copied, setCopied]     = React.useState(false);
+  const outRef  = React.useRef(null);
+  const feedRef = React.useRef(null);
+
+  const hardPct = 100 - tone;
+  const softPct = tone;
+  const toneLabel = hardPct === softPct
+    ? 'Equilibrado — 50% datos · 50% valores'
+    : `${hardPct}% datos y hechos · ${softPct}% valores y personas`;
+
+  async function callAPI(systemPrompt, messages) {
+    const res = await fetch('/api/generate', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-6',
+        max_tokens: 4096,
+        system: systemPrompt,
+        messages
+      })
+    });
+    if (!res.ok) {
+      const e = await res.json().catch(() => ({}));
+      throw new Error(typeof e.error === 'string' ? e.error : e.error?.message || e.raw || JSON.stringify(e) || `Error ${res.status}`);
+    }
+    const data = await res.json();
+    return data.content?.[0]?.text ?? '';
+  }
+
+  async function generate() {
+    if (!brief.trim()) { setError('El brief no puede estar vacío.'); return; }
+    setLoading(true); setError(''); setOutput(''); setFeedback(''); setHistory([]);
+    try {
+      const initMsgs = [{ role: 'user', content: 'Genera el texto institucional.' }];
+      const text = await callAPI(buildPrompt(sit, tone, brief), initMsgs);
+      setOutput(text);
+      setHistory([...initMsgs, { role: 'assistant', content: text }]);
+      setTimeout(() => outRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 80);
+    } catch(e) {
+      setError(e.message || 'Error inesperado.');
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function refine() {
+    if (!feedback.trim() || refining) return;
+    setRefining(true); setError('');
+    const updatedMsgs = [...history, { role: 'user', content: feedback.trim() }];
+    try {
+      const text = await callAPI(buildPrompt(sit, tone, brief), updatedMsgs);
+      setOutput(text);
+      setHistory([...updatedMsgs, { role: 'assistant', content: text }]);
+      setFeedback('');
+      setTimeout(() => feedRef.current?.focus(), 80);
+    } catch(e) {
+      setError(e.message || 'Error inesperado.');
+    } finally {
+      setRefining(false);
+    }
+  }
+
+  function handleFeedbackKey(e) {
+    if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); refine(); }
+  }
+
+  async function copy() {
+    try { await navigator.clipboard.writeText(output); }
+    catch { const t=document.createElement('textarea'); t.value=output; document.body.appendChild(t); t.select(); document.execCommand('copy'); document.body.removeChild(t); }
+    setCopied(true); setTimeout(() => setCopied(false), 2200);
+  }
+
+  function reset() {
+    setStep(1); setSit(null); setTone(50); setBrief('');
+    setOutput(''); setHistory([]); setFeedback(''); setError('');
+  }
+
+  const sliderBg = `linear-gradient(to right, #B11116 0%, #D42025 ${tone}%, #E8DDD8 100%)`;
+
+  return (
+    <div className="wrap">
+
+      <header className="hdr">
+        <div className="hdr-bars">
+          <div className="hdr-bar"></div>
+          <div className="hdr-bar"></div>
+          <div className="hdr-bar"></div>
+          <div className="hdr-bar"></div>
+        </div>
+        <span className="brand-pill"></span>
+        <img className="hdr-logo" src={window.GMSW_LOGO} alt="Grupo Minero Sinchi Wayra" />
+        <h1>Generador de Mensajes Institucionales</h1>
+        <p>Comunicación corporativa oficial · 2026</p>
+        <p className="user-chip">● {sessionStorage.getItem('gmsw_label') || ''}</p>
+      </header>
+
+      <Steps cur={step} />
+
+      {step === 1 && (
+        <div className="card">
+          <h2>Paso 1 — Situación comunicacional</h2>
+          <p className="sub">¿Qué tipo de comunicación necesitas redactar?</p>
+          <div className="sit-grid">
+            {SITUATIONS.map(s => (
+              <div key={s.key} className={`sit-card${sit===s.key?' sel':''}`} onClick={() => setSit(s.key)}>
+                <span className="sit-icon">{s.icon}</span>
+                <span className="sit-lbl">{s.label}</span>
+              </div>
+            ))}
+          </div>
+          <div className="nav">
+            <span />
+            <button className="btn btn-pri" disabled={!sit} onClick={() => setStep(2)}>Siguiente →</button>
+          </div>
+        </div>
+      )}
+
+      {step === 2 && (
+        <div className="card">
+          <h2>Paso 2 — Balance de tono</h2>
+          <p className="sub">Define el énfasis de la comunicación</p>
+          <div className="tone-ends">
+            <span>📊 Datos y hechos</span>
+            <span>🤝 Valores y personas</span>
+          </div>
+          <input type="range" className="slider" min={0} max={100} value={tone}
+            style={{ background: sliderBg }}
+            onChange={e => setTone(Number(e.target.value))} />
+          <div className="tone-val">{toneLabel}</div>
+          <div className="nav">
+            <button className="btn btn-sec" onClick={() => setStep(1)}>← Atrás</button>
+            <button className="btn btn-pri" onClick={() => setStep(3)}>Siguiente →</button>
+          </div>
+        </div>
+      )}
+
+      {step === 3 && (
+        <div className="card">
+          <h2>Paso 3 — Brief</h2>
+          <p className="sub">Describe qué quieres comunicar o el contexto de la comunicación</p>
+          <textarea className="brief" rows={4} value={brief} onChange={e => setBrief(e.target.value)}
+            placeholder="Ej.: Necesito comunicar los resultados del primer trimestre 2026 a medios nacionales, destacando el crecimiento en plata y el compromiso con el empleo local en comunidades mineras." />
+          {error && <div className="err">⚠ {error}</div>}
+          <div className="nav">
+            <button className="btn btn-sec" onClick={() => { setStep(2); setError(''); }}>← Atrás</button>
+            <button className="btn btn-pri btn-gen" disabled={loading || !brief.trim()} onClick={generate}>
+              {loading ? 'Generando…' : '✦ Generar texto'}
+            </button>
+          </div>
+        </div>
+      )}
+
+      {loading && <Loading />}
+
+      {output && !loading && (
+        <div className="out-panel" ref={outRef}>
+          <div className="out-hdr">
+            <span className="out-title">✦ Texto institucional generado</span>
+            <div className="out-acts">
+              <button className={`ibtn${copied?' ok':''}`} onClick={copy}>
+                {copied ? '✓ Copiado' : '⎘ Copiar'}
+              </button>
+              <button className="ibtn" onClick={generate} disabled={loading || refining}>↻ Regenerar</button>
+            </div>
+          </div>
+          <div className={`out-text${refining ? ' dimmed' : ''}`}>{output}</div>
+          <div className="out-foot">
+            <span className="out-meta">
+              {output.length} caracteres · {output.split(/\s+/).filter(Boolean).length} palabras
+              {history.length > 2 && ` · ${Math.floor(history.length / 2)} ajuste${history.length > 4 ? 's' : ''}`}
+            </span>
+            <button className="ibtn" onClick={reset}>+ Nueva comunicación</button>
+          </div>
+
+          <hr className="feed-sep" />
+          <p className="feed-label">Ajustar texto</p>
+          <div className="feed-row">
+            <textarea
+              ref={feedRef}
+              className="feed-input"
+              rows={2}
+              value={feedback}
+              onChange={e => setFeedback(e.target.value)}
+              onKeyDown={handleFeedbackKey}
+              placeholder="Ej.: Hazlo más corto · Tono más formal · Enfocate en el impacto ambiental · Agrega un dato sobre inversión..."
+              disabled={refining}
+            />
+            <button className="btn btn-pri" style={{padding:'10px 20px', fontSize:'11px'}}
+              disabled={refining || !feedback.trim()} onClick={refine}>
+              {refining ? '…' : '→'}
+            </button>
+          </div>
+          {refining && <p className="refining-note">Ajustando el texto…</p>}
+          {error && <div className="err">⚠ {error}</div>}
+        </div>
+      )}
+
+    </div>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+</script>
+</body>
+</html>
