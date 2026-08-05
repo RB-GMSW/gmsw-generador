@@ -54,9 +54,9 @@ module.exports = async function handler(req, res) {
       resolve();
     });
 
-    req2.setTimeout(20000, () => {
+    req2.setTimeout(55000, () => {
       req2.destroy();
-      res.status(500).json({ error: 'Tiempo de espera agotado (20s)' });
+      res.status(500).json({ error: 'Tiempo de espera agotado (55s). Intentá con un brief más corto.' });
       resolve();
     });
 
