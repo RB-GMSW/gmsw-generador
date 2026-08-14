@@ -1,0 +1,940 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>MSC — Generador de Mensajes Institucionales</title>
+  <script src="https://cdn.jsdelivr.net/npm/react@18.3.1/umd/react.production.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/react-dom@18.3.1/umd/react-dom.production.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@babel/standalone@7.26.5/babel.min.js"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800;900&family=Source+Sans+3:ital,wght@0,300;0,400;0,500;0,600;1,400&display=swap" rel="stylesheet" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --pri:      #1F3D63;   /* azul marino oficial del logo MSC */
+      --pri-dim:  rgba(31,61,99,0.07);
+      --pri-deep: #17304E;
+      --accent:   #35618F;
+      --graphite: #1B2A36;
+      --bg:       #F2F5F7;
+      --surface:  #FFFFFF;
+      --border:   #DEE5EA;
+      --text:     #14222E;
+      --sec:      #52616D;
+      --muted:    #9AA7B1;
+      --err:      #C0392B;
+      --ok:       #1F9D6B;
+    }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'Source Sans 3', sans-serif;
+      min-height: 100vh;
+      line-height: 1.65;
+    }
+
+    /* Marca de agua — emblema del logo a baja opacidad */
+    .watermark {
+      position: fixed;
+      bottom: -90px;
+      right: -60px;
+      width: 520px;
+      height: 520px;
+      color: var(--pri);
+      opacity: 0.045;
+      pointer-events: none;
+      z-index: 0;
+      user-select: none;
+    }
+    .watermark svg { width: 100%; height: 100%; display: block; }
+
+    .wrap { max-width: 820px; margin: 0 auto; padding: 0 24px 80px; position: relative; z-index: 1; }
+
+    /* Emblema del logo (triángulo escalonado) */
+    .emblem { display: block; fill: currentColor; }
+
+    /* Header — panel azul marino con el lockup del logo */
+    .hdr {
+      text-align: center; padding: 52px 28px 44px; margin-bottom: 48px;
+      position: relative; overflow: hidden;
+      background: var(--pri); border-radius: 18px;
+      box-shadow: 0 12px 34px rgba(23,48,78,0.28);
+    }
+    .hdr::before {
+      content: ''; position: absolute; inset: 0;
+      background-image: radial-gradient(circle, rgba(255,255,255,0.09) 1px, transparent 1px);
+      background-size: 18px 18px; pointer-events: none;
+    }
+    .hdr h1 { font-family: 'Montserrat', sans-serif; font-size: 20px; font-weight: 800; color: #FFFFFF; margin-bottom: 8px; letter-spacing: -0.3px; position: relative; z-index: 1; }
+    .hdr p { font-size: 10px; color: rgba(255,255,255,0.55); letter-spacing: 3px; text-transform: uppercase; font-family: 'Montserrat', sans-serif; position: relative; z-index: 1; }
+    .hdr .user-chip { color: rgba(255,255,255,0.5); }
+
+    /* Lockup del logo: emblema + nombre */
+    .lockup { position: relative; z-index: 1; display: inline-flex; flex-direction: column; align-items: center; gap: 15px; margin-bottom: 22px; }
+    .lockup .emblem { width: 60px; height: 60px; color: #FFFFFF; }
+    .lockup-name { font-family: 'Montserrat', sans-serif; font-weight: 800; font-size: 15px; letter-spacing: 4.5px; color: #FFFFFF; text-transform: uppercase; }
+
+    /* Steps */
+    .steps { display: flex; align-items: center; justify-content: center; margin-bottom: 40px; }
+    .s-item { display: flex; align-items: center; }
+    .s-dot {
+      width: 34px; height: 34px; border-radius: 50%; border: 1.5px solid var(--border);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 13px; font-weight: 700; color: var(--muted); background: var(--surface);
+      transition: all .25s; font-family: 'Montserrat', sans-serif;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+    }
+    .s-dot.active { border-color: var(--pri); color: var(--pri); box-shadow: 0 0 0 3px var(--pri-dim), 0 1px 3px rgba(0,0,0,0.06); }
+    .s-dot.done { border-color: var(--pri); background: var(--pri); color: var(--surface); box-shadow: 0 2px 8px rgba(18,69,107,0.25); }
+    .s-line { width: 48px; height: 1.5px; background: var(--border); transition: background .3s; }
+    .s-line.done { background: var(--pri); }
+    .sel-summary { display: flex; flex-wrap: wrap; gap: 8px; margin: -8px 0 28px; }
+    .sel-chip {
+      display: inline-flex; align-items: center; gap: 6px;
+      padding: 5px 12px 5px 9px; border-radius: 999px;
+      border: 1.5px solid var(--pri); background: var(--pri-dim);
+      color: var(--pri); cursor: pointer; transition: all .18s;
+      font-family: 'Montserrat', sans-serif; font-size: 11px; font-weight: 600;
+    }
+    .sel-chip:hover { background: var(--pri); color: var(--surface); }
+    .sel-chip-cat { font-size: 8px; text-transform: uppercase; letter-spacing: 1.5px; opacity: .6; padding-right: 6px; border-right: 1px solid currentColor; margin-right: 1px; }
+    .sel-chip-val { max-width: 230px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+    /* Card */
+    .card {
+      background: var(--surface); border: 1px solid var(--border); border-top: 2px solid var(--pri);
+      border-radius: 16px; padding: 36px 40px; margin-bottom: 24px;
+      box-shadow: 0 2px 14px rgba(0,0,0,0.05);
+    }
+    .card h2 { font-family: 'Montserrat', sans-serif; font-size: 17px; font-weight: 700; margin-bottom: 6px; letter-spacing: -0.2px; color: var(--text); }
+    .card .sub { font-size: 14px; color: var(--sec); margin-bottom: 28px; font-weight: 300; }
+
+    /* Situations */
+    .sit-grid { display: grid; grid-template-columns: repeat(3,1fr); gap: 12px; }
+    @media(max-width:580px){ .sit-grid { grid-template-columns: repeat(2,1fr); } }
+    .sit-card {
+      background: var(--bg); border: 1.5px solid var(--border); border-radius: 12px;
+      padding: 22px 14px; cursor: pointer; text-align: center;
+      transition: all .2s; user-select: none;
+    }
+    .sit-card:hover { border-color: var(--pri); background: var(--pri-dim); box-shadow: 0 2px 10px rgba(18,69,107,0.08); }
+    .sit-card.sel  { border-color: var(--pri); background: var(--pri-dim); }
+    .sit-icon { font-size: 24px; display: block; margin-bottom: 9px; }
+    .sit-lbl { font-size: 11px; color: var(--sec); line-height: 1.35; font-weight: 600; font-family: 'Montserrat', sans-serif; }
+    .sit-card.sel .sit-lbl { color: var(--pri); }
+
+    /* Tone slider */
+    .tone-ends { display: flex; justify-content: space-between; margin-bottom: 12px; font-size: 12px; color: var(--sec); font-family: 'Montserrat', sans-serif; font-weight: 600; }
+    input[type=range].slider {
+      width: 100%; -webkit-appearance: none; appearance: none;
+      height: 5px; border-radius: 3px; outline: none; cursor: pointer;
+    }
+    input[type=range].slider::-webkit-slider-thumb {
+      -webkit-appearance: none; width: 20px; height: 20px; border-radius: 50%;
+      background: var(--pri); border: 3px solid var(--surface);
+      box-shadow: 0 0 0 1.5px var(--pri), 0 2px 6px rgba(0,0,0,0.15); cursor: pointer;
+    }
+    input[type=range].slider::-moz-range-thumb {
+      width: 20px; height: 20px; border-radius: 50%;
+      background: var(--pri); border: 3px solid var(--surface); box-shadow: 0 0 0 1.5px var(--pri);
+    }
+    .tone-val { text-align: center; font-size: 13px; color: var(--pri); font-weight: 700; margin-top: 12px; font-family: 'Montserrat', sans-serif; }
+
+    /* Cajas / temas (multi-select) */
+    .caja-grid { display: grid; grid-template-columns: repeat(2,1fr); gap: 12px; }
+    @media(max-width:580px){ .caja-grid { grid-template-columns: 1fr; } }
+    .caja-card {
+      background: var(--bg); border: 1.5px solid var(--border); border-radius: 12px;
+      padding: 18px 18px; cursor: pointer; transition: all .2s; user-select: none;
+      position: relative;
+    }
+    .caja-card:hover { border-color: var(--pri); background: var(--pri-dim); box-shadow: 0 2px 10px rgba(18,69,107,0.08); }
+    .caja-card.sel { border-color: var(--pri); background: var(--pri-dim); }
+    .caja-check {
+      position: absolute; top: 14px; right: 14px; width: 20px; height: 20px; border-radius: 50%;
+      border: 1.5px solid var(--border); background: var(--surface); display: flex; align-items: center;
+      justify-content: center; font-size: 11px; color: var(--surface); transition: all .2s;
+    }
+    .caja-card.sel .caja-check { background: var(--pri); border-color: var(--pri); }
+    .caja-name { font-family: 'Montserrat', sans-serif; font-size: 13px; font-weight: 700; color: var(--text); margin-bottom: 5px; padding-right: 26px; }
+    .caja-card.sel .caja-name { color: var(--pri); }
+    .caja-desc { font-size: 12px; color: var(--sec); line-height: 1.45; font-weight: 300; }
+    .caja-meta { font-family: 'Montserrat', sans-serif; font-size: 9px; color: var(--muted); letter-spacing: 1px; text-transform: uppercase; margin-top: 9px; }
+
+    /* Textarea */
+    .brief {
+      width: 100%; background: var(--bg); border: 1.5px solid var(--border); border-radius: 10px;
+      color: var(--text); font-family: 'Source Sans 3', sans-serif; font-size: 15px; line-height: 1.7;
+      padding: 14px 16px; resize: vertical; min-height: 110px; outline: none; transition: all .2s;
+    }
+    .brief:focus { border-color: var(--pri); box-shadow: 0 0 0 3px var(--pri-dim); }
+    .brief::placeholder { color: var(--muted); }
+
+    /* Nav */
+    .nav { display: flex; justify-content: space-between; align-items: center; margin-top: 30px; gap: 12px; }
+    .btn {
+      padding: 11px 24px; border-radius: 8px; font-size: 11px; font-weight: 700;
+      cursor: pointer; transition: all .2s; border: none; font-family: 'Montserrat', sans-serif;
+      letter-spacing: 0.8px; text-transform: uppercase;
+    }
+    .btn-pri { background: var(--pri); color: var(--surface); }
+    .btn-pri:hover:not(:disabled) { filter: brightness(1.1); transform: translateY(-1px); box-shadow: 0 4px 14px rgba(18,69,107,0.3); }
+    .btn-pri:disabled { opacity: .32; cursor: not-allowed; }
+    .btn-sec { background: transparent; color: var(--sec); border: 1.5px solid var(--border); }
+    .btn-sec:hover { border-color: var(--text); color: var(--text); }
+    .btn-gen { background: var(--pri); font-size: 12px; padding: 13px 36px; }
+    .btn-gen:hover:not(:disabled) { box-shadow: 0 6px 20px rgba(18,69,107,0.35); transform: translateY(-2px); }
+
+    /* Loading */
+    .loading { text-align: center; padding: 56px 0; }
+    .vein { display: inline-flex; align-items: center; gap: 6px; margin-bottom: 14px; }
+    .node { width: 8px; height: 8px; border-radius: 50%; background: var(--pri); animation: pulse 1.5s ease-in-out infinite; }
+    .node:nth-child(2){animation-delay:.18s} .node:nth-child(3){animation-delay:.36s}
+    .node:nth-child(4){animation-delay:.54s} .node:nth-child(5){animation-delay:.72s}
+    @keyframes pulse { 0%,100%{opacity:.15;transform:scale(.7)} 50%{opacity:1;transform:scale(1.2)} }
+    .loading p { font-size: 13px; color: var(--sec); font-style: italic; }
+
+    /* Error */
+    .err { background: rgba(192,57,43,.06); border: 1px solid rgba(192,57,43,.25); border-radius: 8px; padding: 11px 16px; font-size: 13px; color: var(--err); margin-top: 14px; }
+
+    /* Output */
+    .out-panel { background: var(--surface); border: 1px solid var(--border); border-top: 2px solid var(--pri); border-radius: 16px; padding: 36px 40px; margin-top: 24px; box-shadow: 0 2px 14px rgba(0,0,0,0.05); }
+    .out-hdr { display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px; flex-wrap: wrap; gap: 10px; }
+    .out-title { font-family: 'Montserrat', sans-serif; font-size: 10px; font-weight: 700; color: var(--pri); text-transform: uppercase; letter-spacing: 2.5px; }
+    .out-acts { display: flex; gap: 8px; }
+    .ibtn {
+      background: transparent; border: 1.5px solid var(--border); color: var(--sec);
+      padding: 7px 14px; border-radius: 6px; font-size: 11px; cursor: pointer;
+      font-family: 'Montserrat', sans-serif; font-weight: 700; letter-spacing: 0.4px;
+      transition: all .2s; display: flex; align-items: center; gap: 5px;
+    }
+    .ibtn:hover { border-color: var(--pri); color: var(--pri); }
+    .ibtn.ok { border-color: var(--ok); color: var(--ok); }
+    .ibtn:disabled { opacity: .45; cursor: not-allowed; }
+    .out-text { font-size: 15px; line-height: 1.95; color: var(--text); white-space: pre-wrap; word-break: break-word; font-family: 'Source Sans 3', sans-serif; }
+    .out-foot { margin-top: 22px; padding-top: 18px; border-top: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px; }
+    .out-meta { font-size: 11px; color: var(--muted); font-family: 'Montserrat', sans-serif; letter-spacing: 0.3px; }
+
+    /* Feedback / refinement */
+    .feed-sep { margin: 30px 0 24px; border: none; border-top: 1px dashed var(--border); }
+    .feed-label { font-family: 'Montserrat', sans-serif; font-size: 10px; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: 2px; margin-bottom: 10px; }
+    .feed-row { display: flex; gap: 10px; align-items: flex-end; }
+    .feed-input {
+      flex: 1; background: var(--bg); border: 1.5px solid var(--border); border-radius: 10px;
+      color: var(--text); font-family: 'Source Sans 3', sans-serif; font-size: 14px; line-height: 1.6;
+      padding: 10px 14px; resize: none; outline: none; transition: all .2s;
+    }
+    .feed-input:focus { border-color: var(--pri); box-shadow: 0 0 0 3px var(--pri-dim); }
+    .feed-input::placeholder { color: var(--muted); }
+    .out-text.dimmed { opacity: 0.35; transition: opacity .25s; }
+    .refining-note { font-size: 12px; color: var(--pri); font-style: italic; margin-top: 10px; font-family: 'Source Sans 3', sans-serif; }
+
+    /* Lock screen — azul marino con el logo blanco (igual al lockup oficial) */
+    #lock { position: fixed; inset: 0; background: var(--pri); z-index: 9999; display: flex; align-items: center; justify-content: center; }
+    #lock.hidden { display: none; }
+    .lock-card {
+      background: var(--pri); border: 1px solid rgba(255,255,255,0.14);
+      border-radius: 18px; padding: 54px 44px 46px; width: 100%; max-width: 380px;
+      box-shadow: 0 24px 60px rgba(0,0,0,0.32); text-align: center; position: relative; overflow: hidden;
+    }
+    .lock-card::before {
+      content: ''; position: absolute; inset: 0;
+      background-image: radial-gradient(circle, rgba(255,255,255,0.07) 1px, transparent 1px);
+      background-size: 16px 16px; pointer-events: none;
+    }
+    .lock-card > * { position: relative; z-index: 1; }
+    .lock-emblem { width: 88px; height: 88px; color: #FFFFFF; margin: 0 auto 16px; display: block; }
+    .lock-name { font-family: 'Montserrat', sans-serif; font-weight: 800; font-size: 15px; letter-spacing: 4px; color: #FFFFFF; text-transform: uppercase; margin-bottom: 34px; }
+    .lock-input {
+      width: 100%; background: rgba(255,255,255,0.08); border: 1.5px solid rgba(255,255,255,0.20); border-radius: 10px;
+      color: #FFFFFF; font-family: 'Source Sans 3', sans-serif; font-size: 15px;
+      padding: 13px 16px; outline: none; transition: all .2s; text-align: center;
+      letter-spacing: 3px; margin-bottom: 14px; display: block;
+    }
+    .lock-input:focus { border-color: #FFFFFF; box-shadow: 0 0 0 3px rgba(255,255,255,0.14); }
+    .lock-input::placeholder { letter-spacing: 1px; color: rgba(255,255,255,0.5); }
+    .lock-input + .lock-input { margin-top: -6px; }
+    .user-chip { font-family: 'Montserrat', sans-serif; font-size: 10px; font-weight: 600; color: var(--muted); letter-spacing: 1.5px; text-transform: uppercase; margin-top: 6px; }
+    .lock-btn {
+      width: 100%; background: #FFFFFF; color: var(--pri); border: none;
+      border-radius: 8px; font-family: 'Montserrat', sans-serif; font-size: 11px;
+      font-weight: 800; letter-spacing: 1px; text-transform: uppercase;
+      padding: 14px; cursor: pointer; transition: all .2s; margin-top: 4px;
+    }
+    .lock-btn:hover { transform: translateY(-1px); box-shadow: 0 6px 18px rgba(0,0,0,0.28); }
+    .lock-err { color: #FFC4BE; font-size: 13px; margin-top: 14px; display: none; }
+
+    /* Footer rule */
+    .wrap::after {
+      content: ''; display: block; margin-top: 64px;
+      height: 1.5px; border-radius: 1px;
+      background: linear-gradient(to right, var(--pri), transparent);
+      opacity: 0.35;
+    }
+  </style>
+</head>
+<body>
+
+<div id="lock">
+  <div class="lock-card">
+    <svg class="lock-emblem" viewBox="0 0 100 100" fill="currentColor" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+      <polygon points="50,8 41.45,26 58.55,26" />
+      <polygon points="39.55,30 60.45,30 68.05,46 31.95,46" />
+      <polygon points="30.05,50 12,88 50,88" />
+      <polygon points="69.95,50 88,88 50,88" />
+    </svg>
+    <div class="lock-name">Minera San Cristóbal S.A.</div>
+    <input id="lock-user" class="lock-input" type="text" placeholder="Usuario" autocomplete="username" />
+    <input id="lock-pass" class="lock-input" type="password" placeholder="Contraseña" autocomplete="current-password" />
+    <button id="lock-btn" class="lock-btn">Ingresar →</button>
+    <p id="lock-err" class="lock-err">Usuario o contraseña incorrectos</p>
+  </div>
+</div>
+
+<div id="root" style="display:none"></div>
+
+<script>
+(function(){
+  // ── USUARIOS ─────────────────────────────────────────────────
+  // Agregá o quitá usuarios aquí. Formato: { user: '...', pass: '...', label: '...' }
+  // label es el nombre que se muestra dentro de la app después de ingresar
+  var USERS = [
+    { user: 'comm',      pass: 'MSC2026', label: 'Equipo Comunicaciones' },
+    { user: 'gerencia',  pass: 'MSC2026', label: 'Gerencia'              },
+  ];
+  // ─────────────────────────────────────────────────────────────
+
+  var KEY_AUTH  = 'msc_auth';
+  var KEY_LABEL = 'msc_label';
+
+  function unlock(label){
+    sessionStorage.setItem(KEY_LABEL, label);
+    document.getElementById('lock').classList.add('hidden');
+    document.getElementById('root').style.display = '';
+  }
+
+  var savedLabel = sessionStorage.getItem(KEY_AUTH) === '1' && sessionStorage.getItem(KEY_LABEL);
+  if(savedLabel){ unlock(savedLabel); return; }
+
+  function tryLogin(){
+    var u = document.getElementById('lock-user').value.trim().toLowerCase();
+    var p = document.getElementById('lock-pass').value;
+    var match = USERS.find(function(x){ return x.user.toLowerCase() === u && x.pass === p; });
+    if(match){
+      sessionStorage.setItem(KEY_AUTH, '1');
+      unlock(match.label);
+    } else {
+      document.getElementById('lock-err').style.display = 'block';
+      document.getElementById('lock-pass').value = '';
+      document.getElementById('lock-pass').focus();
+    }
+  }
+
+  document.getElementById('lock-btn').addEventListener('click', tryLogin);
+  ['lock-user','lock-pass'].forEach(function(id){
+    document.getElementById(id).addEventListener('keydown', function(e){
+      if(e.key === 'Enter') tryLogin();
+    });
+  });
+})();
+</script>
+
+<script type="text/babel">
+
+// ── CAJAS DE MENSAJES — Minera San Cristóbal ───────────────────
+// Cada CAJA es un tema con sus pilares. Editá / agregá mensajes libremente.
+// Fuentes: Q&A SCM 2023 · CM Agua · CM Gestión Ambiental · CM Macro / Reporte de Sostenibilidad.
+const CAJAS = {
+
+  cambio: {
+    name: "Nueva propiedad — San Cristóbal Mining (SCM)",
+    desc: "Cambio de propiedad, equipo directivo, objetivos, inversión y continuidad de compromisos.",
+    pilares: {
+      duenos: { name: "Nuevos dueños", msgs: [
+        "San Cristóbal Mining Inc. (SCM) es la nueva propietaria de Minera San Cristóbal: un consorcio canadiense respaldado por socios financieros con amplia experiencia en la industria —Ocean Partners UK Limited, Trafigura Pte Ltd., Crescat Capital LLC y Haywood Securities Inc.",
+        "Este conglomerado ingresa al mercado boliviano con la premisa de trascender fronteras y expandir la mina para convertirla en una de las mayores productoras de plata del mundo, sobre la base de lo ya logrado y de los proyectos futuros.",
+        "San Cristóbal Mining conoce la industria minera en Bolivia y en Latinoamérica: varios de sus miembros ya han trabajado en la región.",
+        "Los socios de SCM cuentan con más de 180 años de experiencia combinada en exploración, operaciones mineras y financiamiento de proyectos con minerales.",
+        "San Cristóbal Mining se rige por valores corporativos fundamentales: sostenibilidad, responsabilidad, transparencia, innovación, relaciones con las comunidades, salud y seguridad, administración ambiental y un gobierno corporativo sólido."
+      ]},
+      equipo: { name: "Equipo directivo", msgs: [
+        "La nueva gestión mantiene el equipo directivo y de gestión existente en Minera San Cristóbal, fortaleciéndolo con la incorporación de expertos con conocimientos técnicos y financieros.",
+        "SCM cuenta con la dirección de Quinton Hennigh, geólogo de renombre mundial, con un largo historial de éxitos en exploración y proyectos mineros, y doctorado en geología económica por la Escuela de Minas de Colorado (Estados Unidos).",
+        "David Tretbar, parte del equipo de SCM, formó parte del equipo de Sumitomo en las primeras etapas de exploración y operación de Minera San Cristóbal, donde fue geólogo jefe de las operaciones a cielo abierto y vicepresidente de Recursos Minerales de Summit Mining International."
+      ]},
+      objetivos: { name: "Objetivos y planes", msgs: [
+        "El principal objetivo de SCM es extender la vida útil del yacimiento y continuar con las operaciones de Minera San Cristóbal durante muchas décadas.",
+        "Continuaremos con las operaciones de extracción y molienda de sulfuros a largo plazo, mientras aumentan de inmediato las actividades de exploración y estudio de los grandes recursos de óxido de plata ubicados en el sitio de la mina.",
+        "La operación de plata, plomo y zinc tiene una vida útil saludable de aproximadamente siete años, y el proyecto de desarrollo de óxido de plata podría extender la vida operativa de la mina hasta 2040.",
+        "Lo realmente atractivo en Minera San Cristóbal es su potencial de crecimiento orgánico, proveniente del gran proyecto de óxido de plata y de las excepcionales posibilidades de descubrir nuevos proyectos.",
+        "La meta es establecer a Minera San Cristóbal como un productor de plata de primer nivel en Bolivia y en el mundo.",
+        "San Cristóbal Mining ve a Bolivia como un país muy interesante para invertir, debido a su perfil de producción minera."
+      ]},
+      inversion: { name: "Inversión", msgs: [
+        "La inversión irá tomando forma en los próximos cuatro años, con dos destinos principales: el 60% para potenciar la actual operación de plata y zinc, el 30% para desarrollar el proyecto de óxidos y el 10% para la exploración.",
+        "SCM está comprometida con la expansión de las operaciones de exploración, con enfoque en las oportunidades de crecimiento que ofrece Bolivia por su gran potencial en depósitos minerales.",
+        "Bolivia es una zona minera muy atractiva; SCM se incorpora con entusiasmo como parte de la empresa minera operativa más grande del país."
+      ]},
+      continuidad: { name: "Compromisos y continuidad", msgs: [
+        "Mantenemos los compromisos de Minera San Cristóbal con los empleados, las comunidades y el gobierno, porque el éxito operativo de la minera se debe a ellos.",
+        "Los acuerdos alcanzados previamente entre la minera y las comunidades serán respetados; seguiremos buscando acuerdos de beneficio mutuo.",
+        "Mantendremos los altos estándares ambientales, sociales y de gobierno corporativo (ESG) que son práctica de Minera San Cristóbal.",
+        "SCM busca involucrar a todos los actores de la región y aportar al país en la expansión del desarrollo minero."
+      ]}
+    }
+  },
+
+  agua: {
+    name: "Gestión del Agua",
+    desc: "Políticas hídricas, origen del agua (acuífero Jaukihua), uso racional y desempeño de consumo.",
+    pilares: {
+      politicas: { name: "Políticas de uso y gestión", msgs: [
+        "Somos una empresa minera boliviana que aplica prácticas responsables de gestión ambiental, con actividades basadas en el respeto por el medio ambiente y el uso eficiente de los recursos naturales.",
+        "Siendo el agua un recurso esencial y estratégico para la actividad minera, gestionamos el recurso hídrico centrados en la optimización de su uso en las operaciones, sin afectar las fuentes de agua de nuestras comunidades.",
+        "Nuestro programa de gestión de recursos hídricos se centra en identificar, administrar y optimizar la provisión de agua.",
+        "Desde el inicio de nuestras actividades realizamos el monitoreo sistemático de la calidad y el nivel freático del acuífero Jaukihua, principal fuente de provisión de agua para nuestras operaciones."
+      ]},
+      origen: { name: "Origen del agua (acuífero Jaukihua)", msgs: [
+        "El agua industrial que usamos en la planta concentradora proviene del campo de pozos ubicado en el acuífero Jaukihua, a 10 kilómetros al sudeste de la mina.",
+        "En el estudio de Línea Base del proyecto, el agua del acuífero Jaukihua fue clasificada como salina y no apta para consumo humano, animal o riego, y sin demanda por otros usuarios.",
+        "Estudios técnicos confirmaron que Jaukihua es un acuífero no confinado de agua salina, con una capacidad aproximada de 366 millones de m³: volumen suficiente para abastecer la operación durante los años de vida del proyecto.",
+        "Este acuífero no pertenece ni colinda con áreas protegidas nacionales o internacionales; es una fuente de agua subterránea profunda que no afecta a otros cuerpos de agua superficiales.",
+        "Las aguas del acuífero Jaukihua no son utilizadas por las comunidades aledañas, debido a sus restricciones de uso por la calidad salina y a su profundidad."
+      ]},
+      uso: { name: "Uso racional del recurso", msgs: [
+        "La recuperación de agua desde el depósito de colas y la operación sin descargas nos permiten reutilizar el agua en el proceso, reduciendo el requerimiento de agua subterránea y los riesgos asociados.",
+        "Las fuentes de agua para nuestros procesos son: agua subterránea del acuífero Jaukihua, agua de recuperación del depósito de colas y otras fuentes menores, como agua de mina y escorrentías en época de lluvia.",
+        "Las aguas residuales del campamento y del comedor son tratadas mediante un proceso biológico hasta alcanzar la calidad suficiente para reutilizarse en el riego de parcelas de revegetación y en caminos del área de operación.",
+        "Debido a las condiciones áridas de la región, y pese a la demanda de agua para distintas actividades, no existen descargas a cuerpos de agua."
+      ]},
+      desempeno: { name: "Desempeño y consumo", msgs: [
+        "Tenemos una tasa promedio de consumo de agua subterránea de 0,56 metros cúbicos por tonelada tratada.",
+        "En 2023 se bombearon 9,85 millones de metros cúbicos de agua subterránea desde el campo de pozos Jaukihua, con un promedio diario aproximado de 26.973 m³/día, menor al autorizado de 40.000 m³/día.",
+        "En 2023 se recuperaron 5,99 millones de metros cúbicos de agua de proceso desde el depósito de colas, que representan el 37,81% del agua utilizada como insumo en nuestra planta concentradora.",
+        "El monitoreo de 124 puntos de control interno y externo —70 de agua subterránea, 45 de agua superficial y 9 de agua industrial— muestra que no se ha afectado la calidad de los cuerpos de agua en el área de influencia de las comunidades."
+      ]}
+    }
+  },
+
+  ambiental: {
+    name: "Gestión Ambiental",
+    desc: "Energía, gases de efecto invernadero, emisiones atmosféricas, residuos, biodiversidad y remediación de suelos.",
+    pilares: {
+      energia: { name: "Consumo de energía", msgs: [
+        "Gestionamos nuestro consumo de energía eléctrica mediante indicadores que nos permiten optimizar el consumo específico, aplicando herramientas de análisis y mejora de procesos.",
+        "Nos proveemos de energía eléctrica del Sistema Interconectado Nacional, desde la Subestación Litio de San Cristóbal, a través de una línea de 230 kV financiada por el Proyecto San Cristóbal.",
+        "El consumo de energía eléctrica en 2023 fue de 373.881 MWh, con un tonelaje procesado de 17,72 millones de toneladas, dando un consumo específico de 21,10 kWh/t.",
+        "El proyecto de instalación de un sistema fotovoltaico en oficinas de campamento permitirá reemplazar 120 kW/día de energía convencional por energía 100% solar y reducir la emisión de 14 toneladas de CO₂ al año."
+      ]},
+      gei: { name: "Gases de efecto invernadero", msgs: [
+        "Gestionamos nuestro consumo de combustibles fósiles (diésel y gasolina) mediante la planificación y el control de los procesos de mina, transporte de materiales y personal.",
+        "Las emisiones de gases de efecto invernadero se calculan con base en protocolos internacionales (UNE-ISO/TR 14069:2015 y The Greenhouse Gas Protocol).",
+        "Las emisiones totales de gases de efecto invernadero por consumo de combustibles fósiles fueron de 123.770 toneladas de CO₂ equivalente en 2023.",
+        "En los procesos de mina gestionamos el consumo de diésel mediante el diseño de voladuras, las rutas de transporte, los ciclos de acarreo, el mantenimiento de flotas y el entrenamiento del personal."
+      ]},
+      emisiones: { name: "Emisiones atmosféricas", msgs: [
+        "El control de emisiones de polvo se realiza mediante medidas de prevención en los procesos de minado, trituración, almacenaje de residuos mineros y vías de transporte.",
+        "En el área de mina, la mitigación del polvo se realiza mediante control de la voladura, regado de caminos y estabilización de la capa de rodadura con cloruro de magnesio (bischofita).",
+        "En la planta concentradora, la mitigación del polvo se realiza mediante humedecimiento por aspersión y mediante el DOMO que cubre la pila de almacenaje de material triturado.",
+        "El 90% de los valores medidos de partículas suspendidas menores a 10 micras (PM10) en 10 estaciones de monitoreo se encuentran por debajo del límite permisible de 150 µg/m³ de la norma boliviana."
+      ]},
+      residuos: { name: "Gestión de residuos", msgs: [
+        "La gestión de residuos tiene como objetivo prevenir y mitigar posibles impactos sobre el suelo, el agua y el aire, definiendo medidas de control a partir del análisis de riesgos operativos.",
+        "Bajo los preceptos de la economía circular, priorizamos la separación en origen, la recolección diferenciada y el acondicionamiento para reúso o reciclaje; los residuos sin posibilidad de reúso se disponen de forma segura en el Relleno Sanitario Industrial.",
+        "De las 2.261,27 toneladas de residuos generados en 2023, el 66,51% se destinó a reciclaje y reutilización, y el 33,49% a disposición segura.",
+        "La totalidad del aceite usado, junto con otros residuos peligrosos, se transfiere a un operador autorizado para su reciclaje o reutilización."
+      ]},
+      biodiversidad: { name: "Cambio climático y biodiversidad", msgs: [
+        "Los principios del ICMM rigen nuestras políticas y filosofía empresarial; trabajamos en un enfoque integral y estratégico frente al cambio climático.",
+        "Realizamos estudios de impacto ambiental e implementamos controles operativos para mitigar los impactos sobre la biodiversidad, con seguimiento constante en terreno.",
+        "Las principales especies en situación de peligro en el área de operación incluyen la parina chica, el suri, el quirquincho y el zorro andino, y flora como la thola, la yareta y la sicha, con programas de monitoreo semestral.",
+        "A través de campañas como “Adopta un árbol” y de la evaluación de fauna silvestre, contribuimos a la conservación de especies clave como el gato de Garlepp, el quirquincho y el suri."
+      ]},
+      suelos: { name: "Remediación de suelos", msgs: [
+        "Estamos comprometidos a remediar los suelos alterados o degradados y a rehabilitar su función ecológica y ambiental, según el marco regulatorio y los convenios suscritos con las comunidades.",
+        "El plan maestro de remediación y rehabilitación define el inventario anual de áreas, las técnicas de intervención, el uso de especies nativas, la participación de empresas comunitarias y el presupuesto de ejecución.",
+        "Desde 2007 se identificaron 149 hectáreas de las fases de construcción y operación; 91 hectáreas ya fueron rehabilitadas junto a la empresa comunitaria Apraccuk y entregadas a las comunidades."
+      ]}
+    }
+  },
+
+  sostenibilidad: {
+    name: "Reporte de Sostenibilidad",
+    desc: "Los 7 ejes del reporte: enfoque, desempeño económico y ambiental, comunidades, trabajadores e innovación.",
+    pilares: {
+      reporte: { name: "Acerca del reporte", msgs: [
+        "Cada año, desde 2015, Minera San Cristóbal publica su reporte de sostenibilidad, que cumple con los principios del ICMM y los estándares GRI, verificado de forma independiente por Deloitte Consultoría Limitada.",
+        "El reporte se elabora de acuerdo con los estándares de la Iniciativa de Reporte Global (GRI), incluyendo su suplemento para el Sector de la Minería y los Metales.",
+        "Somos una de las pocas empresas en Bolivia cuya transparencia financiera es evaluada según las expectativas del EITI."
+      ]},
+      enfoque: { name: "Enfoque de sostenibilidad", msgs: [
+        "Todas nuestras operaciones se desarrollan de manera responsable y sostenible, y seguimos trabajando para cumplir nuestros compromisos.",
+        "Nuestra filosofía corporativa y nuestro plan estratégico se centran en desarrollar una minería con principios: responsable en términos económicos, sociales y ambientales.",
+        "Identificamos, evaluamos y controlamos los impactos reales y potenciales vinculados a nuestras operaciones, productos y servicios dentro de nuestro contexto de sostenibilidad.",
+        "Según el IMIU, nuestro puntaje en reducción de riesgos es de 81,3%, superior al promedio global de 79,3%."
+      ]},
+      economico: { name: "Desempeño económico", msgs: [
+        "En 2023 presentamos un resultado neto positivo de 80 millones de dólares, frente al resultado negativo de 21 millones de dólares de 2022.",
+        "Durante 2023 pagamos algo más de 209 millones de dólares en impuestos y 42,5 millones de dólares en regalías.",
+        "Priorizamos a proveedores locales y nacionales: en 2023 establecimos relaciones con 1.238 proveedores e invertimos cerca de 350 millones de dólares en bienes y servicios, de los cuales casi 60 millones fueron para proveedores nacionales y comunitarios.",
+        "Mantenemos una gestión financiera sólida y buscamos oportunidades para fortalecer nuestra posición económica a largo plazo."
+      ]},
+      amb: { name: "Desempeño ambiental", msgs: [
+        "En 2023 no reportamos incidentes ambientales ni sanciones, reafirmando nuestro compromiso con la sostenibilidad y el bienestar de las comunidades y el entorno.",
+        "Nos enfocamos en el uso racional, eficiente y sostenible de los recursos naturales, con buenas prácticas ambientales y estándares globales de monitoreo.",
+        "Aseguramos una gestión ambiental que identifica, evalúa y maneja los riesgos, previene la contaminación y mitiga los posibles impactos.",
+        "Hemos realizado inversiones significativas en la prevención, mitigación y remediación de impactos ambientales."
+      ]},
+      comunidades: { name: "Compromiso con las comunidades", msgs: [
+        "Integramos guías y buenas prácticas ESG en todas nuestras operaciones; queremos contribuir al desarrollo de las comunidades y al progreso del país.",
+        "Avanzamos un 91% en el cumplimiento de acuerdos y convenios con las comunidades, ejecutando 16 planes de inversión social y atendiendo 220 solicitudes en temas productivos, culturales y medioambientales.",
+        "Desarrollamos proyectos de electrificación rural, apoyo a la producción local y programas de educación para contribuir al bienestar de las comunidades donde operamos.",
+        "Las comunidades de San Cristóbal y Culpina K se conectaron a la red pública de electrificación rural, eliminando la dependencia de generadores.",
+        "Mantenemos una comunicación y participación activa con nuestros grupos de interés —entre ellos sindicatos y ministerios— a través de canales formales e informales."
+      ]},
+      trabajadores: { name: "Nuestros trabajadores", msgs: [
+        "Nuestra fuerza laboral está compuesta por 1.335 empleados y 2.144 contratistas, con una baja rotación del 0,6%, y fomentamos la igualdad de oportunidades y salarios.",
+        "Logramos una tasa de frecuencia de incidentes con tiempo perdido de cero, gracias a la formación y capacitación continua de empleados y contratistas.",
+        "Respetamos los derechos humanos del personal y de las comunidades, y mantenemos nuestras operaciones libres de discriminación, acoso y de trabajo infantil o forzoso.",
+        "Capacitamos a 171 trabajadores en derechos humanos y realizamos auditorías in situ para proveedores de bienes críticos, en colaboración con SGS.",
+        "Obtuvimos certificaciones y reconocimientos como el de Top Employers Institute e ICR Systems & Management."
+      ]},
+      innovacion: { name: "Innovación", msgs: [
+        "Nuestro modelo de negocio innovador abarca la gestión empresarial, la producción, los servicios y la mejora continua.",
+        "Nuestra tecnología nos permite extraer agua de un acuífero salino no apto para consumo humano y recuperar agua de procesos y de fuentes superficiales en la temporada de lluvias.",
+        "En 2023 nos adaptamos a nuevos canales de transporte y respondimos de manera solvente al desafío del incendio en Puerto Mejillones de octubre de 2022, cuyas operaciones portuarias se restablecieron en septiembre de 2023.",
+        "Coadyuvamos a la certificación de la quinua orgánica y a que la planta de desaponificación obtenga su Registro Sanitario."
+      ]}
+    }
+  }
+
+};
+
+const SITUATIONS = [
+  { key: 'carta', icon: '✉️', label: 'Carta externa o interna',
+    fmt: 'Redacta una carta formal. Incluye asunto, saludo, cuerpo en 2-3 párrafos bien desarrollados y cierre cordial con firma institucional.' },
+  { key: 'correo', icon: '📧', label: 'Correo electrónico',
+    fmt: 'Redacta un correo institucional. Incluye asunto sugerido entre [corchetes], saludo breve, cuerpo en 2 párrafos y cierre.' },
+  { key: 'informe', icon: '📋', label: 'Informe o reporte',
+    fmt: 'Redacta un fragmento narrativo para informe o reporte. Estilo objetivo y estructurado, con subtítulos si aplica.' },
+  { key: 'discurso', icon: '📣', label: 'Discurso o vocería',
+    fmt: 'Redacta un discurso con apertura impactante, desarrollo sólido con ideas clave bien articuladas y cierre memorable con llamado a acción.' },
+  { key: 'entrevista', icon: '🎙️', label: 'Entrevista o Q&A',
+    fmt: 'Redacta respuestas de vocería para entrevista o Q&A. Formato pregunta/respuesta. Cada respuesta directa, segura y respaldada por los mensajes; abre con el dato o la afirmación más contundente.' },
+  { key: 'comunicacion', icon: '📢', label: 'Nota de prensa, comunicado o RRSS',
+    fmt: 'Si es nota de prensa: titular, lead (5W), 2-3 párrafos y boilerplate institucional al cierre. Si es comunicado: formato directo y claro. Si son RRSS: 2 publicaciones para LinkedIn, concisas e impactantes, con hashtags.' },
+];
+
+// ── LOGIC ──────────────────────────────────────────────────────
+function buildPrompt(sit, cajaKeys, tone, brief) {
+  const hardPct = 100 - tone;
+  const softPct = tone;
+  const sitObj = SITUATIONS.find(s => s.key === sit);
+
+  let msgSection = '';
+  cajaKeys.forEach(ck => {
+    const caja = CAJAS[ck];
+    if (!caja) return;
+    msgSection += `\n══ CAJA: ${caja.name} ══\n`;
+    Object.values(caja.pilares).forEach(p => {
+      msgSection += `\n### ${p.name}\n`;
+      p.msgs.forEach(m => { msgSection += `- ${m}\n`; });
+    });
+  });
+
+  const toneNote = hardPct > softPct
+    ? `Tono protocolar (${hardPct}% datos · ${softPct}% calidez): la información concreta va al frente; los valores y las personas aparecen como marco, no como protagonistas. Respetuoso y directo.`
+    : hardPct === softPct
+      ? `Tono equilibrado (${hardPct}% datos · ${softPct}% calidez): la información concreta y el plano humano se alternan con naturalidad. Ninguno eclipsa al otro.`
+      : `Tono cálido (${softPct}% calidez · ${hardPct}% datos): las personas y el propósito van al frente; los datos aparecen para sostener, no para dominar. Cercano sin perder la seriedad.`;
+
+  const usaFirma = (sit === 'carta' || sit === 'correo');
+
+  return `Eres la voz institucional de Minera San Cristóbal (MSC): directa, técnica, con datos.
+Tu carácter en cada texto: una empresa minera que habla con hechos y cifras verificables antes que con intenciones. La solidez viene de los resultados y de los estándares, no de los adjetivos.
+Escribes como una operación con trayectoria y con datos que mostrar — no promesas que hacer.
+
+━━━━ REGLA PRIMERA Y ABSOLUTA ━━━━
+Usa ÚNICA Y EXCLUSIVAMENTE los mensajes de la caja de mensajes que se te dan abajo.
+- No inventes datos, cifras ni estadísticas
+- No agregues información de internet ni de tu conocimiento general sobre minería, Bolivia o San Cristóbal
+- No menciones proyectos, eventos ni iniciativas que no estén en los mensajes
+- Si el brief pide algo que no está en la lista, escribe solo con lo que tienes
+Cada afirmación debe poder rastrearse a un mensaje de la caja.
+
+━━━━ IDENTIDAD ━━━━
+- Nombre de la empresa: "Minera San Cristóbal" (puedes usar la sigla "MSC" tras nombrarla la primera vez). La nueva propietaria es "San Cristóbal Mining" ("SCM"). No confundas ambas ni las abrevies mal.
+- Voz institucional: habla la organización, no un firmante individual
+- Tratamiento: siempre "usted" para el singular y "ustedes" para el plural. Nunca tuteo.
+
+━━━━ VOCABULARIO CARACTERÍSTICO ━━━━
+Estas expresiones son propias de MSC. Úsalas cuando el contexto las pida — no como relleno:
+gestión responsable · uso racional del recurso hídrico · estándares internacionales · monitoreo sistemático · debida diligencia · derechos humanos · economía circular · grupos de interés · gobierno corporativo · valor compartido · ESG
+Cuando el texto lo permita, puedes mencionar marcos como ICMM, GRI, EITI, ISO u ODS si están respaldados por la caja de mensajes.
+
+━━━━ DATO ANTES QUE VALOR ━━━━
+Si la caja incluye un número o resultado concreto relevante al tema, ese dato va en la primera o segunda oración — nunca al final.
+Estructura natural de MSC: afirmación con evidencia → contexto o consecuencia → compromiso o estándar.
+Nunca abrir con declaración de intención: no "buscamos", no "creemos que debemos", no "nos comprometemos a". Esas frases van al final, si van.
+
+━━━━ COHERENCIA GRAMATICAL — CRÍTICO ━━━━
+Antes de escribir, elige UNA voz y mantenla sin excepción en todo el texto:
+  OPCIÓN A — Primera persona del plural: "informamos", "gestionamos", "reafirmamos nuestro compromiso"
+    → Úsala cuando el texto es directo y cercano; la empresa habla como sujeto activo
+  OPCIÓN B — Tercera persona: "Minera San Cristóbal informa", "la empresa comunica"
+    → Úsala cuando el texto requiere más distancia o formalidad protocolar
+NO mezcles las dos voces en el mismo texto. Elige una al inicio y no la abandones.
+
+━━━━ CONSTRUCCIÓN DEL TEXTO ━━━━
+Primera oración: el dato más importante o la afirmación más contundente de la caja. Sin preámbulo, sin contexto genérico.
+Párrafos: una idea por párrafo. Cuando terminas una idea, párrafo nuevo.
+Largo: corto, claro y contundente. Sin relleno. Sin palabras que no aporten nada.
+Formato: texto corrido. Sin viñetas (salvo que el tipo de comunicación lo pida). Solo prosa bien construida.
+${usaFirma ? 'Cierre: termina con "Atentamente," seguido de "Minera San Cristóbal" en línea aparte.' : 'Cierre: no fuerces firma ni "Atentamente"; cierra según el tipo de comunicación.'}
+
+━━━━ FRASES PROHIBIDAS ━━━━
+Estas expresiones hacen sonar el texto como una plantilla genérica. No las uses bajo ningún concepto:
+"Es grato dirigirnos a usted" · "En virtud de lo expuesto" · "Por medio de la presente"
+"A quien corresponda" · "Hacemos de su conocimiento" · "Sin otro particular"
+"Nos complace informarle" · "En el marco de" · "trabajamos arduamente" · "nos enorgullece"
+"estamos comprometidos con" (como apertura) · "en aras de" · "a los efectos de" · "cabe destacar"
+cualquier frase que pueda ser de cualquier empresa latinoamericana
+
+━━━━ CONTEXTO Y TONO ━━━━
+Tipo de comunicación: ${sitObj?.label}
+${toneNote}
+Contexto boliviano: cuando el texto lo requiera, trata con respeto las referencias a comunidades, normativa local o cultura boliviana. No generalices. No estereotipes.
+
+━━━━ CAJA DE MENSAJES — ÚNICA FUENTE PERMITIDA ━━━━
+${msgSection}
+
+━━━━ FORMATO ESPECÍFICO DEL TIPO ━━━━
+${sitObj?.fmt}
+
+━━━━ BRIEF ━━━━
+${brief}`;
+}
+
+// ── COMPONENTS ─────────────────────────────────────────────────
+function Emblem({ className }) {
+  return (
+    <svg className={`emblem${className ? ' ' + className : ''}`} viewBox="0 0 100 100" fill="currentColor" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+      <polygon points="50,8 41.45,26 58.55,26" />
+      <polygon points="39.55,30 60.45,30 68.05,46 31.95,46" />
+      <polygon points="30.05,50 12,88 50,88" />
+      <polygon points="69.95,50 88,88 50,88" />
+    </svg>
+  );
+}
+
+function Steps({ cur }) {
+  return (
+    <div className="steps">
+      {[1,2,3,4].map((n,i) => (
+        <div key={n} className="s-item">
+          {i > 0 && <div className={`s-line${cur > n-1 ? ' done' : ''}`} />}
+          <div className={`s-dot${cur === n ? ' active' : cur > n ? ' done' : ''}`}>
+            {cur > n ? '✓' : n}
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function Loading() {
+  return (
+    <div className="loading">
+      <div className="vein">{[0,1,2,3,4].map(i => <div key={i} className="node" />)}</div>
+      <p>Generando comunicación institucional…</p>
+    </div>
+  );
+}
+
+function SelectionSummary({ step, sit, cajas, tone, onGoTo }) {
+  const sitObj = SITUATIONS.find(s => s.key === sit);
+  const hardPct = 100 - tone;
+  const softPct = tone;
+  const toneText = hardPct === softPct
+    ? '50% datos · 50% calidez'
+    : hardPct > softPct
+      ? `${hardPct}% datos · ${softPct}% calidez`
+      : `${softPct}% calidez · ${hardPct}% datos`;
+  const toneIcon = hardPct > softPct ? '📊' : softPct > hardPct ? '🤝' : '⚖';
+  const cajasText = cajas.map(c => CAJAS[c]?.name).filter(Boolean).join(' · ');
+  if (step < 2) return null;
+  return (
+    <div className="sel-summary">
+      {sitObj && (
+        <button className="sel-chip" onClick={() => onGoTo(1)} title="Clic para editar">
+          <span className="sel-chip-cat">Tipo</span>
+          <span className="sel-chip-val">{sitObj.icon} {sitObj.label}</span>
+        </button>
+      )}
+      {step > 2 && cajas.length > 0 && (
+        <button className="sel-chip" onClick={() => onGoTo(2)} title="Clic para editar">
+          <span className="sel-chip-cat">Caja{cajas.length > 1 ? 's' : ''}</span>
+          <span className="sel-chip-val">🗂 {cajasText}</span>
+        </button>
+      )}
+      {step > 3 && (
+        <button className="sel-chip" onClick={() => onGoTo(3)} title="Clic para editar">
+          <span className="sel-chip-cat">Tono</span>
+          <span className="sel-chip-val">{toneIcon} {toneText}</span>
+        </button>
+      )}
+    </div>
+  );
+}
+
+// ── APP ────────────────────────────────────────────────────────
+function App() {
+  const [step, setStep]         = React.useState(1);
+  const [sit, setSit]           = React.useState(null);
+  const [cajas, setCajas]       = React.useState([]);
+  const [tone, setTone]         = React.useState(50);
+  const [brief, setBrief]       = React.useState('');
+  const [output, setOutput]     = React.useState('');
+  const [history, setHistory]   = React.useState([]);
+  const [feedback, setFeedback] = React.useState('');
+  const [loading, setLoading]   = React.useState(false);
+  const [refining, setRefining] = React.useState(false);
+  const [error, setError]       = React.useState('');
+  const [copied, setCopied]     = React.useState(false);
+  const outRef  = React.useRef(null);
+  const feedRef = React.useRef(null);
+
+  const hardPct = 100 - tone;
+  const softPct = tone;
+  const toneLabel = hardPct === softPct
+    ? 'Equilibrado — 50% datos · 50% valores'
+    : `${hardPct}% datos y hechos · ${softPct}% valores y personas`;
+
+  function toggleCaja(key) {
+    setCajas(prev => prev.includes(key) ? prev.filter(k => k !== key) : [...prev, key]);
+  }
+
+  async function callAPI(systemPrompt, messages) {
+    const res = await fetch('/api/generate', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-6',
+        max_tokens: 4096,
+        system: systemPrompt,
+        messages
+      })
+    });
+    if (!res.ok) {
+      const e = await res.json().catch(() => ({}));
+      throw new Error(typeof e.error === 'string' ? e.error : e.error?.message || e.raw || JSON.stringify(e) || `Error ${res.status}`);
+    }
+    const data = await res.json();
+    return data.content?.[0]?.text ?? '';
+  }
+
+  async function generate() {
+    if (!brief.trim()) { setError('El brief no puede estar vacío.'); return; }
+    if (cajas.length === 0) { setError('Selecciona al menos una caja de mensajes.'); return; }
+    setLoading(true); setError(''); setOutput(''); setFeedback(''); setHistory([]);
+    try {
+      const initMsgs = [{ role: 'user', content: 'Genera el texto institucional.' }];
+      const text = await callAPI(buildPrompt(sit, cajas, tone, brief), initMsgs);
+      setOutput(text);
+      setHistory([...initMsgs, { role: 'assistant', content: text }]);
+      setTimeout(() => outRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 80);
+    } catch(e) {
+      setError(e.message || 'Error inesperado.');
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function refine() {
+    if (!feedback.trim() || refining) return;
+    setRefining(true); setError('');
+    const updatedMsgs = [...history, { role: 'user', content: feedback.trim() }];
+    try {
+      const text = await callAPI(buildPrompt(sit, cajas, tone, brief), updatedMsgs);
+      setOutput(text);
+      setHistory([...updatedMsgs, { role: 'assistant', content: text }]);
+      setFeedback('');
+      setTimeout(() => feedRef.current?.focus(), 80);
+    } catch(e) {
+      setError(e.message || 'Error inesperado.');
+    } finally {
+      setRefining(false);
+    }
+  }
+
+  function handleFeedbackKey(e) {
+    if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); refine(); }
+  }
+
+  async function copy() {
+    try { await navigator.clipboard.writeText(output); }
+    catch { const t=document.createElement('textarea'); t.value=output; document.body.appendChild(t); t.select(); document.execCommand('copy'); document.body.removeChild(t); }
+    setCopied(true); setTimeout(() => setCopied(false), 2200);
+  }
+
+  function reset() {
+    setStep(1); setSit(null); setCajas([]); setTone(50); setBrief('');
+    setOutput(''); setHistory([]); setFeedback(''); setError('');
+  }
+
+  const sliderBg = `linear-gradient(to right, #1F3D63 0%, #35618F ${tone}%, #DEE5EA ${tone}%, #DEE5EA 100%)`;
+
+  return (
+    <div className="wrap">
+
+      <div className="watermark"><Emblem /></div>
+
+      <header className="hdr">
+        <div className="lockup">
+          <Emblem />
+          <span className="lockup-name">Minera San Cristóbal S.A.</span>
+        </div>
+        <h1>Generador de Mensajes Institucionales</h1>
+        <p>Comunicación corporativa oficial · 2026</p>
+        <p className="user-chip">● {sessionStorage.getItem('msc_label') || ''}</p>
+      </header>
+
+      <Steps cur={step} />
+      <SelectionSummary step={step} sit={sit} cajas={cajas} tone={tone} onGoTo={setStep} />
+
+      {step === 1 && (
+        <div className="card">
+          <h2>Paso 1 — Situación comunicacional</h2>
+          <p className="sub">¿Qué tipo de comunicación necesitas redactar?</p>
+          <div className="sit-grid">
+            {SITUATIONS.map(s => (
+              <div key={s.key} className={`sit-card${sit===s.key?' sel':''}`} onClick={() => setSit(s.key)}>
+                <span className="sit-icon">{s.icon}</span>
+                <span className="sit-lbl">{s.label}</span>
+              </div>
+            ))}
+          </div>
+          <div className="nav">
+            <span />
+            <button className="btn btn-pri" disabled={!sit} onClick={() => setStep(2)}>Siguiente →</button>
+          </div>
+        </div>
+      )}
+
+      {step === 2 && (
+        <div className="card">
+          <h2>Paso 2 — Caja de mensajes</h2>
+          <p className="sub">Elige uno o varios temas. Solo se usarán como fuente los mensajes de las cajas seleccionadas.</p>
+          <div className="caja-grid">
+            {Object.entries(CAJAS).map(([key, c]) => {
+              const nPil = Object.keys(c.pilares).length;
+              const nMsg = Object.values(c.pilares).reduce((a, p) => a + p.msgs.length, 0);
+              const sel = cajas.includes(key);
+              return (
+                <div key={key} className={`caja-card${sel?' sel':''}`} onClick={() => toggleCaja(key)}>
+                  <div className="caja-check">{sel ? '✓' : ''}</div>
+                  <div className="caja-name">{c.name}</div>
+                  <div className="caja-desc">{c.desc}</div>
+                  <div className="caja-meta">{nPil} pilares · {nMsg} mensajes</div>
+                </div>
+              );
+            })}
+          </div>
+          <div className="nav">
+            <button className="btn btn-sec" onClick={() => setStep(1)}>← Atrás</button>
+            <button className="btn btn-pri" disabled={cajas.length === 0} onClick={() => setStep(3)}>Siguiente →</button>
+          </div>
+        </div>
+      )}
+
+      {step === 3 && (
+        <div className="card">
+          <h2>Paso 3 — Balance de tono</h2>
+          <p className="sub">Define el énfasis de la comunicación</p>
+          <div className="tone-ends">
+            <span>📊 Datos y hechos</span>
+            <span>🤝 Valores y personas</span>
+          </div>
+          <input type="range" className="slider" min={0} max={100} value={tone}
+            style={{ background: sliderBg }}
+            onChange={e => setTone(Number(e.target.value))} />
+          <div className="tone-val">{toneLabel}</div>
+          <div className="nav">
+            <button className="btn btn-sec" onClick={() => setStep(2)}>← Atrás</button>
+            <button className="btn btn-pri" onClick={() => setStep(4)}>Siguiente →</button>
+          </div>
+        </div>
+      )}
+
+      {step === 4 && (
+        <div className="card">
+          <h2>Paso 4 — Brief</h2>
+          <p className="sub">Describe qué quieres comunicar o el contexto de la comunicación</p>
+          <textarea className="brief" rows={4} value={brief} onChange={e => setBrief(e.target.value)}
+            placeholder="Ej.: Necesito responder a un medio nacional sobre el uso del agua en la operación, aclarando el origen salino del acuífero Jaukihua y la reutilización desde el depósito de colas." />
+          {error && <div className="err">⚠ {error}</div>}
+          <div className="nav">
+            <button className="btn btn-sec" onClick={() => { setStep(3); setError(''); }}>← Atrás</button>
+            <button className="btn btn-pri btn-gen" disabled={loading || !brief.trim()} onClick={generate}>
+              {loading ? 'Generando…' : '✦ Generar texto'}
+            </button>
+          </div>
+        </div>
+      )}
+
+      {loading && <Loading />}
+
+      {output && !loading && (
+        <div className="out-panel" ref={outRef}>
+          <div className="out-hdr">
+            <span className="out-title">✦ Texto institucional generado</span>
+            <div className="out-acts">
+              <button className={`ibtn${copied?' ok':''}`} onClick={copy}>
+                {copied ? '✓ Copiado' : '⎘ Copiar'}
+              </button>
+              <button className="ibtn" onClick={generate} disabled={loading || refining}>↻ Regenerar</button>
+            </div>
+          </div>
+          <div className={`out-text${refining ? ' dimmed' : ''}`}>{output}</div>
+          <div className="out-foot">
+            <span className="out-meta">
+              {output.length} caracteres · {output.split(/\s+/).filter(Boolean).length} palabras
+              {history.length > 2 && ` · ${Math.floor(history.length / 2)} ajuste${history.length > 4 ? 's' : ''}`}
+            </span>
+            <button className="ibtn" onClick={reset}>+ Nueva comunicación</button>
+          </div>
+
+          <hr className="feed-sep" />
+          <p className="feed-label">Ajustar texto</p>
+          <div className="feed-row">
+            <textarea
+              ref={feedRef}
+              className="feed-input"
+              rows={2}
+              value={feedback}
+              onChange={e => setFeedback(e.target.value)}
+              onKeyDown={handleFeedbackKey}
+              placeholder="Ej.: Hazlo más corto · Tono más formal · Enfócate en la reutilización de agua · Agrega el dato de las 91 hectáreas rehabilitadas..."
+              disabled={refining}
+            />
+            <button className="btn btn-pri" style={{padding:'10px 20px', fontSize:'11px'}}
+              disabled={refining || !feedback.trim()} onClick={refine}>
+              {refining ? '…' : '→'}
+            </button>
+          </div>
+          {refining && <p className="refining-note">Ajustando el texto…</p>}
+          {error && <div className="err">⚠ {error}</div>}
+        </div>
+      )}
+
+    </div>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+</script>
+</body>
+</html>
